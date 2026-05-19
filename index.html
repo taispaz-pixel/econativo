@@ -1,412 +1,188 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>EcoScan - Transforme suas escolhas</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
-<script>
-tailwind.config = {
-theme: {
-extend: {
-colors: {
-primary: '#2E7D32',
-secondary: '#81C784',
-dark: '#1B5E20',
-light: '#E8F5E9',
-}
-}
-}
-}
-</script>
-<style type="text/tailwindcss">
-@layer utilities {
-.scan-animation {
-animation: scan 2.5s infinite linear;
-}
-@keyframes scan {
-0% { transform: translateY(0); }
-50% { transform: translateY(260px); }
-100% { transform: translateY(0); }
-}
-.active-nav {
-color: #2E7D32 !important;
-font-weight: 700;
-}
-.animated-bg {
-background: linear-gradient(-45deg, #132214, #1c3d1e, #0f2411, #1b331c);
-background-size: 400% 400%;
-animation: gradient 10s ease infinite;
-}
-@keyframes gradient {
-0% { background-position: 0% 50%; }
-50% { background-position: 100% 50%; }
-100% { background-position: 0% 50%; }
-}
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoScan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background: #22c55e;
+            animation: scan 2.5s infinite linear;
+        }
+        @keyframes scan {
+            0% { top: 0; }
+            50% { top: 100%; }
+            100% { top: 0; }
+        }
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-800 overflow-x-hidden selection:bg-secondary/30">
+<body class="bg-gray-50 text-gray-800 min-h-screen pb-24">
 
-<header class="bg-gradient-to-r from-primary to-secondary text-white py-4 px-5 shadow-md sticky top-0 z-40">
-<div class="container mx-auto flex justify-between items-center max-w-xl">
-<div>
-<h1 class="text-xl font-black tracking-tight">EcoScan</h1>
-<p class="text-xs opacity-90">Transforme suas escolhas, proteja o planeta.</p>
-</div>
-<div class="flex items-center gap-2 bg-white/20 border border-white/10 rounded-full px-4 py-1.5 backdrop-blur-sm">
-<i class="fa fa-leaf text-amber-300 animate-pulse"></i>
-<span class="font-bold text-sm">XP: <span id="xp-value">350</span></span>
-</div>
-</div>
-</header>
+    <header class="bg-gradient-to-r from-emerald-600 to-green-500 text-white py-4 px-5 shadow-md sticky top-0 z-40">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold tracking-wide">EcoScan</h1>
+                <p class="text-xs opacity-90">Proteja o planeta</p>
+            </div>
+            <div class="flex items-center gap-2 bg-white/20 border border-white/10 rounded-full px-4 py-1.5 backdrop-blur-sm">
+                <i class="fa-solid fa-leaf text-amber-300 animate-pulse"></i>
+                <span class="text-xs font-bold">XP: <span id="xpValue">350</span></span>
+            </div>
+        </div>
+    </header>
 
-<main class="container mx-auto px-4 py-4 pb-28 max-w-xl">
+    <main class="max-w-md mx-auto px-4 py-4">
 
-<div id="page-inicio" class="page-content space-y-4">
-<div class="relative rounded-3xl overflow-hidden shadow-xl bg-black h-[380px] w-full mx-auto border-4 border-white">
+        <section id="inicio-screen" class="screen active space-y-4">
+            <div class="relative rounded-3xl overflow-hidden shadow-xl bg-black h-[380px] w-full border-4 border-white">
+                <div class="absolute inset-0 bg-gradient-to-b from-transparent to-black/40 z-10"></div>
+                
+                <div class="absolute inset-12 border-2 border-green-500 rounded-2xl z-20 flex flex-col items-center justify-center">
+                    <div class="scan-line"></div>
+                    <i class="fa-solid fa-qrcode text-white/20 text-5xl mb-2"></i>
+                    <span class="text-xs text-white/60 font-medium">Modo Simulação Ativo</span>
+                </div>
 
-<div id="camera-container" class="w-full h-full relative animated-bg flex items-center justify-center z-10">
-<video id="camera-feed" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover hidden z-10"></video>
+                <button onclick="fazerEscaneamento()" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 bg-green-600 hover:bg-green-700 active:scale-95 text-white font-bold px-6 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-camera"></i>
+                    Toque para escanear um objeto
+                </button>
+            </div>
 
-<div id="placeholder-ui" class="text-center p-6 space-y-2 z-0 opacity-50">
-<i class="fa fa-qrcode text-4xl text-white mb-2 block"></i>
-<p class="text-white text-xs font-medium">Modo Simulação Ativo</p>
-</div>
-</div>
+            <div class="bg-green-50 border border-green-200 rounded-2xl p-4 text-center">
+                <p class="text-sm text-green-800 font-medium">Aline qualquer embalagem ou objeto de descarte no quadrado.</p>
+            </div>
 
-<div class="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-<div class="w-4/5 h-3/4 border border-white/30 rounded-2xl relative shadow-[inset_0_0_20px_rgba(255,255,255,0.1)]">
-<div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-secondary rounded-tl-lg"></div>
-<div class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-secondary rounded-tr-lg"></div>
-<div class="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-secondary rounded-bl-lg"></div>
-<div class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-secondary rounded-br-lg"></div>
+            <div id="resultadoBox" class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hidden">
+                <h3 id="resNome" class="font-bold text-lg text-gray-900"></h3>
+                <p id="resImpacto" class="text-sm text-gray-600 mt-1"></p>
+                <span id="resBadge" class="inline-block text-xs font-bold px-3 py-1 rounded-full mt-3"></span>
+            </div>
+        </section>
 
-<div class="scan-animation absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-secondary to-transparent shadow-[0_0_12px_#81C784]"></div>
-</div>
-</div>
+        <section id="mapa-screen" class="screen space-y-4">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                <h2 class="font-bold text-lg mb-2">📍 Pontos de Coleta Próximos</h2>
+                <p class="text-sm text-gray-600 mb-4">Encontre locais adequados para descarte na sua região.</p>
+                
+                <div class="space-y-3">
+                    <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <h4 class="font-bold text-sm text-emerald-700">Ecoponto Central</h4>
+                        <p class="text-xs text-gray-500">Aceita: Plásticos, Vidros e Papelão</p>
+                        <span class="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full mt-1 inline-block">A 500m de você</span>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <h4 class="font-bold text-sm text-emerald-700">Descarte de Eletrônicos Sul</h4>
+                        <p class="text-xs text-gray-500">Aceita: Pilhas, Baterias e Eletrodomésticos</p>
+                        <span class="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full mt-1 inline-block">A 1.2 km de você</span>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-<div class="absolute bottom-5 left-0 right-0 text-center z-30 pointer-events-auto">
-<button onclick="executarEscaneamento()" class="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-dark text-white px-6 py-3 rounded-full font-bold shadow-lg active:scale-95 transform transition text-sm tracking-wide">
-<i class="fa fa-camera text-base"></i> Toque para escanear um objeto
-</button>
-</div>
-</div>
+        <section id="social-screen" class="screen space-y-4">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                <h2 class="font-bold text-lg mb-2">👥 Comunidade Eco</h2>
+                <p class="text-sm text-gray-600 mb-4">Veja o impacto dos seus amigos e vizinhos.</p>
 
-<div id="status-message" class="text-center py-3 px-4 bg-light text-dark rounded-2xl text-xs font-semibold shadow-sm border border-secondary/20">
-Alinhe qualquer embalagem ou objeto de descarte no quadrado.
-</div>
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold text-sm">1º</div>
+                            <div>
+                                <h4 class="font-bold text-sm">Mariana Silva</h4>
+                                <p class="text-[11px] text-gray-500">Reciclou 42 objetos esta semana</p>
+                            </div>
+                        </div>
+                        <span class="text-xs font-bold text-emerald-600">1,240 XP</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 bg-gray-400 text-white rounded-full flex items-center justify-center font-bold text-sm">2º</div>
+                            <div>
+                                <h4 class="font-bold text-sm">Você</h4>
+                                <p class="text-[11px] text-gray-500">Mantendo o planeta limpo</p>
+                            </div>
+                        </div>
+                        <span id="socialXp" class="text-xs font-bold text-emerald-600">350 XP</span>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-<div id="result-card" class="bg-white p-5 rounded-3xl shadow-lg text-center border border-gray-100 hidden space-y-3 transition-all duration-300 transform scale-95">
-<div class="inline-block bg-primary/10 text-primary text-[11px] font-black tracking-widest uppercase px-3 py-1 rounded-full" id="res-tag">---</div>
-<h3 class="text-lg font-bold text-gray-800" id="res-nome">Identificando...</h3>
-<span class="inline-block bg-amber-100 text-amber-800 text-xs font-bold px-3 py-0.5 rounded-md" id="res-nota">---</span>
-<p class="text-xs text-gray-600 bg-gray-50 p-3 rounded-xl border border-gray-100" id="res-info"></p>
+    </main>
 
-<div class="grid grid-cols-2 gap-2 pt-2">
-<button onclick="confirmarDescarte()" class="bg-primary hover:bg-dark text-white font-bold py-3 rounded-xl text-xs shadow-md transition">Confirmar (+50 XP)</button>
-<button onclick="fecharResultado()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 rounded-xl text-xs transition">Descartar Outro</button>
-</div>
-</div>
-</div>
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-2 shadow-xl z-40">
+        <div class="max-w-md mx-auto flex justify-around">
+            <button onclick="mudarTela('inicio')" id="nav-inicio" class="flex flex-col items-center gap-1 text-green-600 font-bold text-xs py-1 w-20 transition-all">
+                <i class="fa-solid fa-house text-lg"></i>
+                <span>Início</span>
+            </button>
+            <button onclick="mudarTela('mapa')" id="nav-mapa" class="flex flex-col items-center gap-1 text-gray-400 font-medium text-xs py-1 w-20 transition-all">
+                <i class="fa-solid fa-location-dot text-lg"></i>
+                <span>Mapa</span>
+            </button>
+            <button onclick="mudarTela('social')" id="nav-social" class="flex flex-col items-center gap-1 text-gray-400 font-medium text-xs py-1 w-20 transition-all">
+                <i class="fa-solid fa-users text-lg"></i>
+                <span>Social</span>
+            </button>
+        </div>
+    </nav>
 
-<div id="page-mapa" class="page-content hidden space-y-4">
-<h2 class="text-xl font-black text-dark text-center">Pontos de Coleta</h2>
-<div class="bg-white p-5 rounded-3xl shadow-md border border-gray-100 space-y-4">
-<p class="text-xs text-gray-500 text-center">Encontre lixeiras seletivas e ecopontos perto da sua localização atual.</p>
-<button onclick="buscarLocalizacao()" class="w-full bg-gradient-to-r from-primary to-secondary text-white font-bold py-3 px-4 rounded-xl shadow-md active:scale-[0.99] transition text-xs">
-<i class="fa fa-map-marker mr-1"></i> Liberar Radar de Ecopontos
-</button>
-<div id="listaEcopontos" class="space-y-3 max-h-[280px] overflow-y-auto pr-1"></div>
-</div>
-</div>
+    <script>
+        let xp = 350;
 
-<div id="page-social" class="page-content hidden space-y-4">
-<div class="bg-white p-5 rounded-3xl shadow-md border border-gray-100 space-y-3">
-<div class="flex items-center gap-3">
-<div class="relative">
-<img id="fotoPerfil" class="w-14 h-14 rounded-full object-cover border-2 border-primary bg-gray-100" src="https://cdn-icons-png.flaticon.com/512/2909/2909763.png" alt="Perfil">
-<label class="absolute -bottom-1 -right-1 bg-dark text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full cursor-pointer shadow">
-<i class="fa fa-pencil"></i>
-<input type="file" accept="image/*" onchange="alterarFotoPerfil(event)" class="hidden">
-</label>
-</div>
-<div>
-<h2 class="text-sm font-bold text-gray-800">Nível Eco Guardian</h2>
-<p id="faltaXpText" class="text-[11px] text-gray-400">Calculando metas...</p>
-</div>
-</div>
-<div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-<div id="progressBar" class="bg-gradient-to-r from-primary to-secondary h-full transition-all duration-500" style="width: 0%"></div>
-</div>
-<div class="text-right text-xs font-bold text-primary">
-Pontuação: <span id="socialXP">350</span> / 1000 XP
-</div>
-</div>
+        function mudarTela(tela) {
+            // Esconde todas as telas
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            
+            // Reseta estilos dos botões do menu
+            const botoes = ['inicio', 'mapa', 'social'];
+            botoes.forEach(b => {
+                const btn = document.getElementById(`nav-${b}`);
+                btn.classList.remove('text-green-600', 'font-bold');
+                btn.classList.add('text-gray-400', 'font-medium');
+            });
 
-<div class="bg-white p-4 rounded-3xl shadow-md border border-gray-100 space-y-2">
-<h3 class="text-xs font-bold text-dark uppercase tracking-wider"><i class="fa fa-paper-plane mr-1"></i> Enviar Mensagem</h3>
-<input type="text" id="nomeDestino" class="w-full p-2.5 border border-gray-200 rounded-xl text-xs bg-gray-50 focus:outline-primary" placeholder="Para quem é a mensagem?">
-<textarea id="mensagemPrivada" class="w-full p-2.5 border border-gray-200 rounded-xl text-xs bg-gray-50 focus:outline-primary" rows="2" placeholder="Deixe um incentivo ecológico aqui..."></textarea>
-<button onclick="enviarMensagemPrivada()" class="w-full bg-dark text-white font-bold py-2 rounded-xl text-xs shadow hover:bg-primary transition">Enviar Mensagem</button>
-</div>
+            // Ativa a tela escolhida e destaca o botão correspondente
+            document.getElementById(`${tela}-screen`).classList.add('active');
+            const btnAtivo = document.getElementById(`nav-${tela}`);
+            btnAtivo.classList.remove('text-gray-400', 'font-medium');
+            btnAtivo.classList.add('text-green-600', 'font-bold');
+        }
 
-<div class="space-y-3">
-<h3 class="text-[11px] font-black text-gray-400 uppercase tracking-widest pl-1">Mensagens Recebidas</h3>
-<div id="listaMensagens" class="space-y-3 max-h-[220px] overflow-y-auto pr-1"></div>
-</div>
-</div>
-</main>
+        function fazerEscaneamento() {
+            const materiais = [
+                { name: "Garrafa Ambar (Vidro)", rec: true, imp: "Descarte no coletor Verde. Alto valor de reciclagem.", cor: "bg-green-100 text-green-800" },
+                { name: "Embalagem PET", rec: true, imp: "Descarte no coletor Vermelho. Lave antes de descartar.", cor: "bg-green-100 text-green-800" },
+                { name: "Bateria de Celular", rec: false, imp: "Logística reversa obrigatória. Entregue em postos especiais.", cor: "bg-red-100 text-red-800" },
+                { name: "Caixa de Papelão", rec: true, imp: "Descarte no coletor Azul. Dobre para ocupar menos espaço.", cor: "bg-green-100 text-green-800" }
+            ];
 
-<footer class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md shadow-[0_-4px_12px_rgba(0,0,0,0.05)] border-t border-gray-100 z-50">
-<nav class="container mx-auto flex justify-around items-center py-3 max-w-xl">
-<button onclick="mudarAba('inicio')" id="btn-nav-inicio" class="nav-btn flex flex-col items-center gap-1 active-nav text-gray-400 transition">
-<i class="fa fa-home text-lg"></i>
-<span class="text-[10px]">Início</span>
-</button>
-<button onclick="mudarAba('mapa')" id="btn-nav-mapa" class="nav-btn flex flex-col items-center gap-1 text-gray-400 transition">
-<i class="fa fa-map-marker text-lg"></i>
-<span class="text-[10px]">Mapa</span>
-</button>
-<button onclick="mudarAba('social')" id="btn-nav-social" class="nav-btn flex flex-col items-center gap-1 text-gray-400 transition">
-<i class="fa fa-users text-lg"></i>
-<span class="text-[10px]">Social</span>
-</button>
-</nav>
-</footer>
+            const item = materiais[Math.floor(Math.random() * materiais.length)];
+            
+            const box = document.getElementById('resultadoBox');
+            document.getElementById('resNome').innerText = item.name;
+            document.getElementById('resImpacto').innerText = item.imp;
+            
+            const badge = document.getElementById('resBadge');
+            badge.innerText = item.rec ? "Reciclável" : "Não Reciclável";
+            badge.className = `inline-block text-xs font-bold px-3 py-1 rounded-full mt-3 ${item.cor}`;
+            
+            box.classList.remove('hidden');
 
-<script>
-let stream = null;
-let pontos = parseInt(localStorage.getItem("ecoXP")) || 350;
-let mensagensPrivadas = JSON.parse(localStorage.getItem("ecoMensagens")) || [];
-
-const materiaisDisponiveis = [
-{ tag:"PLÁSTICO", nome:"Garrafa PET de Refrigerante", nota:"Nota B", info:"Descarte feito exclusivamente nas lixeiras vermelhas. Lembre-se de retirar o excesso de líquido antes!" },
-{ tag:"ALUMÍNIO", nome:"Lata de Suco / Refrigerante", nota:"Nota A+", info:"Altamente sustentável e reaproveitável. Deve ser amassada e jogada na lixeira amarela de metais." },
-{ tag:"PAPELÃO", nome:"Caixa de Papel / Papelão", nota:"Nota A", info:"Dobre bem a caixa para diminuir o volume. O descarte correto ocorre nas lixeiras azuis." },
-{ tag:"VIDRO", nome:"Garrafa ou Frasco de Vidro", nota:"Nota A", info:"Lave o frasco antes de enviar para a lixeira verde. Se estiver quebrado, embale em um jornal por segurança." }
- ];
-
-const ecopontosMock = [
-{ nome:"Ponto Verde - Supermercado Central", endereco:"Av. Principal, 1020", materiais:"Plásticos, Metais e Papel", lat:-22.8210, lng:-47.2660 },
-{ nome:"Ecoponto Municipal de Triagem", endereco:"Rua das Flores, 45", materiais:"Vidros, Eletrônicos e Papelão", lat:-22.8250, lng:-47.2710 }
- ];
-
-// MUDANÇA DE ABA ISOLADA CONTRA TRAVAMENTOS
-function mudarAba(abaAlvo) {
-try {
-document.querySelectorAll('.page-content').forEach(page => page.classList.add('hidden'));
-document.querySelectorAll('.nav-btn').forEach(btn => {
-btn.classList.remove('active-nav', 'text-primary');
-btn.classList.add('text-gray-400');
-});
-
-const pagina = document.getElementById(page-${abaAlvo}); const botao = document.getElementById(btn-nav-${abaAlvo});
-
-if(pagina) pagina.classList.remove('hidden');
-if(botao) {
-botao.classList.add('active-nav');
-botao.classList.remove('text-gray-400');
-}
-
-if (abaAlvo !== 'inicio') {
-pararCameraReal();
-}
-
-if (abaAlvo === 'social') {
-atualizarXP();
-renderizarMensagens();
-carregarFotoPerfil();
-}
-} catch (erro) {
-console.log("Erro na transição de abas: ", erro);
-}
-}
-
-// PARAR CAMERA TOTALMENTE
-function pararCameraReal() {
-try {
-const video = document.getElementById('camera-feed');
-if (stream) {
-stream.getTracks().forEach(track => track.stop());
-stream = null;
-}
-if (video) {
-video.srcObject = null;
-video.classList.add('hidden');
-}
-const placeholder = document.getElementById('placeholder-ui');
-if (placeholder) placeholder.classList.remove('hidden');
-} catch (e) {
-console.log("Erro ao desligar câmera: ", e);
-}
-}
-
-// SIMULAÇÃO INTELIGENTE DE RENDERIZAÇÃO DE IA
-function ejecutarEscaneamento() {
-const status = document.getElementById('status-message');
-if (status) status.innerText = "Analisando embalagem com IA...";
-
-setTimeout(() => {
-const item = materiaisDisponiveis[Math.floor(Math.random() * materiaisDisponiveis.length)];
-
-const tagEl = document.getElementById('res-tag');
-const nomeEl = document.getElementById('res-nome');
-const notaEl = document.getElementById('res-nota');
-const infoEl = document.getElementById('res-info');
-const cardEl = document.getElementById('result-card');
-
-if(tagEl) tagEl.innerText = [ ${item.tag} ]`;
-if(nomeEl) nomeEl.innerText = item.nome;
-if(notaEl) notaEl.innerText = item.nota;
-if(infoEl) infoEl.innerText = item.info;
-
-if(cardEl) cardEl.classList.remove('hidden');
-if(status) status.innerText = "Item analisado com sucesso!";
-}, 1200);
-}
-
-function fecharResultado() {
-const card = document.getElementById('result-card');
-if(card) card.classList.add('hidden');
-const status = document.getElementById('status-message');
-if(status) status.innerText = "Alinhe qualquer embalagem ou objeto de descarte no quadrado.";
-}
-
-function confirmarDescarte() {
-pontos += 50;
-localStorage.setItem("ecoXP", pontos);
-atualizarXP();
-alert("Parabéns! Você ganhou +50 XP");
-fecharResultado();
-}
-
-function atualizarXP() {
-const xpValue = document.getElementById("xp-value");
-const socialXP = document.getElementById("socialXP");
-const progressBar = document.getElementById("progressBar");
-const faltaXpText = document.getElementById("faltaXpText");
-
-if (xpValue) xpValue.innerText = pontos;
-if (socialXP) socialXP.innerText = pontos;
-
-let percentual = (pontos / 1000) * 100;
-if (progressBar) progressBar.style.width = Math.min(percentual, 100) + "%";
-
-let restante = Math.max(1000 - pontos, 0);
-if (faltaXpText) {
-faltaXpText.innerText = restante <= 0
-? "Nível máximo atingido!"
-: Faltam${restante} XP para o próximo nível`;
-}
-}
-
-// BUSCA DE ECOPONTOS CORRIGIDA
-function buscarLocalizacao() {
-const lista = document.getElementById("listaEcopontos");
-if(!lista) return;
-
-lista.innerHTML = <div class="text-center text-xs py-4 text-gray-400 animate-pulse"&gt;Buscando localizações próximas...&lt;/div>;
-
-setTimeout(() => {
-lista.innerHTML = "";
-ecopontosMock.forEach(ponto => {
-lista.innerHTML += &lt;div class="bg-gray-50 border border-gray-200 p-4 rounded-2xl shadow-sm text-left space-y-2"&gt; &lt;div&gt; &lt;h3 class="font-bold text-primary text-sm"&gt;${ponto.nome}</h3>
-<p class="text-xs text-gray-400">📍 ${ponto.endereco}&lt;/p&gt; &lt;p class="text-xs text-gray-600 font-medium mt-1"&gt;♻️ Recebe: ${ponto.materiais}</p>
-</div>
-<button onclick="abrirGoogleMaps(${ponto.lat}, ${ponto.lng})" class="w-full bg-primary hover:bg-dark text-white font-bold py-1.5 rounded-lg text-xs transition">
-Ver no Google Maps
-</button>
-</div>
-`;
-});
-}, 1000);
-}
-
-// LINHA CORRIGIDA: Removido o caractere '1' e a chave extra '{' que quebravam o script
-function abrirGoogleMaps(lat, lng) {
-window.open(https://maps.google.com/?q=${lat},${lng}, "_blank");
-}
-
-// CONTROLE DA FOTO DE PERFIL
-function alterarFotoPerfil(event) {
-const arquivo = event.target.files[0];
-if(!arquivo) return;
-
-const reader = new FileReader();
-reader.onload = function(e){
-const foto = document.getElementById("fotoPerfil");
-if (foto) foto.src = e.target.result;
-localStorage.setItem("fotoPerfilEco", e.target.result);
-};
-reader.readAsDataURL(arquivo);
-}
-
-function carregarFotoPerfil() {
-const foto = localStorage.getItem("fotoPerfilEco");
-const elementoFoto = document.getElementById("fotoPerfil");
-if(foto && elementoFoto){
-elementoFoto.src = foto;
-}
-}
-
-// GERENCIADOR DE MENSAGENS E MODERAÇÃO (BLOQUEIO)
-function enviarMensagemPrivada() {
-const inputNome = document.getElementById("nomeDestino");
-const inputMsg = document.getElementById("mensagemPrivada");
-
-if(!inputNome || !inputMsg) return;
-
-const nome = inputNome.value.trim();
-const mensagem = inputMsg.value.trim();
-
-if(!nome || !mensagem){
-alert("Preencha todos os campos.");
-return;
-}
-
-mensagensPrivadas.unshift({ nome, mensagem });
-localStorage.setItem("ecoMensagens", JSON.stringify(mensagensPrivadas));
-
-renderizarMensagens();
-
-inputNome.value = "";
-inputMsg.value = "";
-}
-
-function renderizarMensagens() {
-const alvo = document.getElementById("listaMensagens");
-if (!alvo) return;
-alvo.innerHTML = "";
-
-if (mensagensPrivadas.length === 0) {
-alvo.innerHTML = <p class="text-center text-xs text-gray-400 py-4"&gt;Nenhuma mensagem enviada.&lt;/p>;
-return;
-}
-
-mensagensPrivadas.forEach((msg, index) => {
-alvo.innerHTML += &lt;div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-left space-y-2 mb-2"&gt; &lt;div class="flex justify-between items-center"&gt; &lt;h4 class="font-bold text-xs text-primary"&gt;Para:${msg.nome}</h4>
-<button onclick="bloquearMensagem({msg.mensagem}</p>
-</div>
-`;
-});
-}
-
-function bloquearMensagem(index) {
-mensagensPrivadas.splice(index, 1);
-localStorage.setItem("ecoMensagens", JSON.stringify(mensagensPrivadas));
-renderizarMensagens();
-alert("Mensagem removida.");
-}
-
-// INICIALIZAÇÃO SEGURA
-window.addEventListener("DOMContentLoaded", () => {
-atualizarXP();
-carregarFotoPerfil();
-renderizarMensagens();
-mudarAba("inicio");
-});
-</script>
+            // Sobe o XP a cada escaneamento bem-sucedido!
+            xp += 15;
+            document.getElementById('xpValue').innerText = xp;
+            document.getElementById('socialXp').innerText = xp + " XP";
+        }
+    </script>
 </body>
 </html>
