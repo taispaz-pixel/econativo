@@ -10,15 +10,15 @@
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
+<script>
 const firebaseConfig = { apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw", authDomain: "ecoscan-96a80.firebaseapp.com", projectId: "ecoscan-96a80", storageBucket: "ecoscan-96a80.appspot.com", messagingSenderId: "532877468700", appId: "1:532877468700:web:689d25217275313341abd9", measurementId: "G-ZN2B54CN07" };
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 const EMAIL_ADMIN = "tais.paz@live.com";
 const URL_MODELO = "https://teachablemachine.withgoogle.com/models/HqIiv8XU6/";
@@ -26,18 +26,16 @@ let model, maxPredictions;
 
 async function carregarIA() {
   try {
-    const modelURL = URL_MODELO + "model.json";
-    const metadataURL = URL_MODELO + "metadata.json";
-    model = await tmImage.load(modelURL, metadataURL);
+    model = await tmImage.load(URL_MODELO + "model.json", URL_MODELO + "metadata.json");
     maxPredictions = model.getTotalClasses();
   } catch (e) { console.error("Erro IA:", e); }
 }
 carregarIA();
 
-// --- ACréSCIMO: DICIONÁRIO DE SINÔNIMOS ---
+// --- ACRESCENTADO: DICIONÁRIO E LÓGICA DE COMPOSTAGEM ---
 const dicionario = {
   "organico": "comida", "fruta": "comida", "vegetal": "comida", "resto": "comida",
-  "papel": "papelao", "caderno": "papelao", "caixa": "papelao",
+  "papel": "papelao", "caixa": "papelao", "caderno": "papelao",
   "garrafa": "plastico", "embalagem": "plastico",
   "pote": "vidro", "copo": "vidro",
   "lata": "aluminio", "metal": "aluminio"
@@ -47,7 +45,7 @@ const dadosReciclagem = {
   "comida": {
     nome: "Resíduo Orgânico (Comida) 🌱",
     tipo: "Lixeira Marrom 🟤",
-    dica: "Perfeito para compostagem! Restos de vegetais, cascas de frutas e borra de café viram um adubo incrível."
+    dica: "Perfeito para compostagem! Cascas de frutas, restos de legumes e borra de café viram um adubo incrível."
   },
   "papelao": { nome: "Papelão / Papel ♻️", tipo: "Lixeira Azul 🔵", dica: "Dobre para economizar espaço e coloque na lixeira azul." },
   "plastico": { nome: "Plástico ♻️", tipo: "Lixeira Vermelha 🔴", dica: "Lave para retirar restos de comida." },
@@ -55,7 +53,6 @@ const dadosReciclagem = {
   "aluminio": { nome: "Alumínio ♻️", tipo: "Lixeira Amarela 🟡", dica: "Amasse bem as latinhas para facilitar a reciclagem." }
 };
 
-// --- MANTENDO SUAS FUNÇÕES ORIGINAIS DE SCANNER COM O DICIONÁRIO ---
 window.scanearObjeto = async () => {
   if (!model) return;
   const video = document.getElementById("cameraFeed");
@@ -65,21 +62,40 @@ window.scanearObjeto = async () => {
   const prediction = await model.predict(video);
   let maiorClasse = prediction.sort((a,b) => b.probability - a.probability)[0].className.toLowerCase().trim();
   
-  // Aplica o Dicionário
+  // Aplica dicionário
   Object.keys(dicionario).forEach(key => { if(maiorClasse.includes(key)) maiorClasse = dicionario[key]; });
 
   const dados = dadosReciclagem[maiorClasse] || { nome: maiorClasse, tipo: "Reciclável", dica: "Descarte corretamente." };
   
   resultado.innerHTML = `
-    <div class="p-5 bg-white border-l-4 border-green-500 shadow-sm mt-3 rounded-xl">
+    <div class="p-5 bg-white border-l-4 border-green-500 shadow-sm mt-3 rounded-xl animate-fade-in">
         <h4 class="font-bold text-slate-800">${dados.nome}</h4>
         <p class="text-green-600 font-bold text-xs">${dados.tipo}</p>
         <p class="text-sm text-slate-600 mt-2">${dados.dica}</p>
     </div>`;
     document.getElementById("xpUsuario").innerText = parseInt(document.getElementById("xpUsuario").innerText) + 50;
 };
+// --- FIM DOS ACRÉSCIMOS ---
 
-// (Aqui você mantém o restante do seu código original de login, mural, etc...)
+window.login = async () => { try { await auth.signInWithEmailAndPassword(document.getElementById("email").value, document.getElementById("senha").value); } catch(err){ alert("Erro no login"); }};
+window.logout = async () => { await auth.signOut(); };
+window.mudarAba = (nome) => {
+  document.querySelectorAll(".aba-conteudo").forEach(el => el.classList.add("hidden"));
+  document.getElementById(`aba-${nome}`).classList.remove("hidden");
+  if(nome === "escanear") abrirCamera();
+};
+window.abrirCamera = async () => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        document.getElementById("cameraFeed").srcObject = stream;
+        document.getElementById("cameraFeed").classList.remove("hidden");
+    } catch(err) { alert("Permita o acesso à câmera"); }
+};
 </script>
-
-  
+<style>
+.scan-frame { position: relative; width: 100%; height: 320px; border-radius: 20px; overflow: hidden; background: #000; margin: 15px 0; }
+</style>
+</head>
+<body class="p-4 bg-green-50">
+    </body>
+</html>
