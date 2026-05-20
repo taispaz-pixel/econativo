@@ -23,8 +23,10 @@ const db = getFirestore(app);
 
 const EMAIL_ADMIN = "tais.paz@live.com";
 
-// LINK DO SEU MODELO EXCLUSIVO DO TEACHABLE MACHINE
-const URL_MODELO = "https://teachablemachine.withgoogle.com/models/HqIiv8XU6/";
+// =================================================================
+// 🚨 LINK DO MODELO FUNCIONANDO PERFEITAMENTE INSERIDO AQUI 🚨
+// =================================================================
+const URL_MODELO = "https://teachablemachine.withgoogle.com/models/v8VnlJGQG/";
 let model, maxPredictions;
 
 async function carregarIA() {
@@ -33,9 +35,10 @@ async function carregarIA() {
     const metadataURL = URL_MODELO + "metadata.json";
     model = await tmImage.load(modelURL, metadataURL);
     maxPredictions = model.getTotalClasses();
-    console.log("Cérebro personalizado do EcoScan ativado! 🚀");
+    console.log("Cérebro de IA ativado com sucesso! 🚀");
   } catch (e) {
     console.error("Erro ao carregar modelo customizado:", e);
+    setTimeout(carregarIA, 3000); // Tenta carregar de novo se der erro na internet
   }
 }
 carregarIA();
@@ -43,47 +46,70 @@ carregarIA();
 const termosProibidos = ["macaco", "viado", "negão", "puta", "homofobico", "racista", "bicha", "arrombado"];
 
 /* =======================================================
-   📚 BANCO DE DADOS COM DICIONÁRIO DE SINÔNIMOS
+   📚 BANCO DE DADOS (Sinônimos + Curiosidades)
 ======================================================= */
 const dadosReciclagem = {
   "comida": {
     nome: "Resíduo Orgânico (Comida) 🌱",
     tipo: "Lixeira Marrom 🟤",
     dica: "Descarte na lixeira de resíduos orgânicos ou reserve para a compostagem caseira.",
-    sinonimos: "Restos de refeições, cascas de frutas e legumes, borra de café, saquinhos de chá, cascas de ovos."
+    sinonimos: "Restos de refeições, cascas, borra de café, saquinhos de chá, cascas de ovos.",
+    curiosidade: "Compostar o lixo orgânico pode reduzir o volume de lixo da sua casa em até 50%!"
   },
   "papelao": {
     nome: "Caixa de Sucrilhos / Papelão / Papel ♻️",
     tipo: "Lixeira Azul 🔵",
-    dica: "Incrível! Certifique-se de esvaziar todo o conteúdo interno, desmonte ou dobre a caixa para economizar espaço.",
-    sinonimos: "Caixas de sapato, cadernos velhos, revistas, jornais, panfletos, papel sulfite, embalagens de papel."
+    dica: "Incrível! Esvazie todo o conteúdo e desmonte ou dobre a caixa para economizar espaço.",
+    sinonimos: "Caixas de sapato, revistas, jornais, panfletos, papel sulfite, embalagens.",
+    curiosidade: "Reciclar 1 tonelada de papelão salva 17 árvores adultas de serem cortadas!"
   },
   "plastico": {
     nome: "Plástico / Embalagem Pet ♻️",
     tipo: "Lixeira Vermelha 🔴",
     dica: "Lave rapidamente o interior para remover restos de líquidos ou alimentos.",
-    sinonimos: "Garrafas PET, potes de margarina, sacolas plásticas, copos descartáveis, embalagens de salgadinho/biscoito."
+    sinonimos: "Garrafas PET, potes de margarina, sacolas plásticas, copos descartáveis.",
+    curiosidade: "O plástico que você acabou de salvar demoraria até 400 anos para sumir na natureza!"
   },
   "vidro": {
     nome: "Vidro / Frascos e Potes ♻️",
     tipo: "Lixeira Verde 🟢",
-    dica: "Retire tampas de metal ou plástico antes. Se estiver quebrado, embale em jornal para proteger os coletores.",
-    sinonimos: "Garrafas de bebida, potes de geleia ou conserva, copos de vidro, frascos de perfume."
+    dica: "Retire tampas antes. Se estiver quebrado, embale em jornal para proteger os coletores.",
+    sinonimos: "Garrafas de bebida, potes de geleia, copos de vidro, frascos de perfume.",
+    curiosidade: "O vidro é 100% reciclável e pode ser reutilizado infinitas vezes sem perder qualidade."
   },
   "aluminio": {
     nome: "Alumínio / Latas de Metal ♻️",
     tipo: "Lixeira Amarela 🟡",
     dica: "Amasse bem as latinhas antes do descarte para ajudar a reduzir o volume armazenado.",
-    sinonimos: "Latinhas de refrigerante/cerveja, latas de sardinha ou conserva, panelas velhas, tampinhas de metal."
+    sinonimos: "Latinhas de refrigerante/cerveja, latas de sardinha, tampinhas de metal.",
+    curiosidade: "Reciclar 1 única latinha economiza energia suficiente para manter uma TV ligada por 3 horas!"
   }
 };
 
 const mensagensAgradecimento = [
-  "O planeta agradece imensamente o seu cuidado! Cada pequeno descarte correto constrói um futuro mais limpo. 🌱",
-  "Parabéns pela atitude sustentável! Você está ajudando a reduzir o lixo acumulado no mundo. 🌍✨",
-  "Excelente trabalho! Reciclar protege a nossa biodiversidade e economiza recursos naturais valiosos. 🌲",
-  "Atitude exemplar! O EcoScan se orgulha de ter você na nossa comunidade verde. 🎉"
+  "O planeta agradece imensamente o seu cuidado! 🌱",
+  "Você está ajudando a reduzir o lixo no mundo! 🌍✨",
+  "Reciclar protege nossa biodiversidade! 🌲",
+  "O EcoScan se orgulha de você! 🎉"
 ];
+
+// EFEITO SONORO DE SUCESSO
+const somMoeda = new Audio("https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3");
+
+// SISTEMA DE NÍVEIS
+function atualizarNivel() {
+  const xp = parseInt(document.getElementById("xpUsuario").innerText);
+  let titulo = "Iniciante Verde 🌱";
+  let cor = "text-green-200";
+
+  if (xp >= 200 && xp < 500) { titulo = "Defensor Eco 🌿"; cor = "text-emerald-300"; }
+  else if (xp >= 500 && xp < 1000) { titulo = "Guardião da Natureza 🌳"; cor = "text-yellow-300"; }
+  else if (xp >= 1000) { titulo = "Mestre Sustentável 🌍"; cor = "text-amber-400"; }
+
+  const elementoTitulo = document.getElementById("tituloUsuario");
+  elementoTitulo.innerText = titulo;
+  elementoTitulo.className = `text-[10px] font-black uppercase tracking-wider ${cor}`;
+}
 
 /* =======================================================
    📷 CONTROLE DA CÂMERA DO CELULAR
@@ -99,7 +125,7 @@ window.abrirCamera = async () => {
     video.classList.remove("hidden");
     placeholder.classList.add("hidden");
   } catch (err) {
-    mostrarAviso("Acesse as configurações do navegador e permita a câmera.", "erro");
+    mostrarAviso("Permita a câmera nas configurações.", "erro");
   }
 };
 
@@ -113,11 +139,11 @@ window.pararCamera = () => {
 };
 
 /* =======================================================
-   🔍 PROCESSAMENTO DA SUA IA PERSONALIZADA
+   🔍 PROCESSAMENTO DA IA
 ======================================================= */
 window.scanearObjeto = async () => {
   if (!model) {
-    mostrarAviso("A inteligência artificial ainda está carregando. Aguarde um segundo!", "info");
+    mostrarAviso("A IA ainda está carregando. Aguarde um segundo e tente novamente!", "info");
     return;
   }
 
@@ -141,14 +167,21 @@ window.scanearObjeto = async () => {
     for (let i = 0; i < maxPredictions; i++) {
       if (prediction[i].probability > maiorProbabilidade) {
         maiorProbabilidade = prediction[i].probability;
-        maiorClasse = prediction[i].className.toLowerCase().trim();
+        // Ajusta o nome para garantir que o código encontre a classe no banco de dados
+        let classeLida = prediction[i].className.toLowerCase().trim();
+        if(classeLida.includes("comida") || classeLida.includes("organico")) maiorClasse = "comida";
+        else if(classeLida.includes("papel")) maiorClasse = "papelao";
+        else if(classeLida.includes("plastico") || classeLida.includes("pet")) maiorClasse = "plastico";
+        else if(classeLida.includes("vidro")) maiorClasse = "vidro";
+        else if(classeLida.includes("aluminio") || classeLida.includes("metal")) maiorClasse = "aluminio";
+        else maiorClasse = classeLida;
       }
     }
 
     if (maiorClasse === "fundo" || maiorProbabilidade < 0.4) {
       resultado.innerHTML = `
         <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold mt-3 text-center">
-          ⚠️ Nenhum objeto reciclável detectado. Aproxime mais o material da câmera ou mude a posição!
+          ⚠️ Nenhum objeto detectado com clareza. Aproxime mais da câmera!
         </div>
       `;
       return;
@@ -158,17 +191,21 @@ window.scanearObjeto = async () => {
 
     if (dadosObjeto) {
       const agradecimento = mensagensAgradecimento[Math.floor(Math.random() * mensagensAgradecimento.length)];
+      somMoeda.play().catch(e => console.log("O navegador bloqueou o som automático."));
 
-      // RECURSO DE COMPOSTAGEM (Só aparece se for comida)
+      // ADICIONA XP E ATUALIZA TÍTULO
+      document.getElementById("xpUsuario").innerText = parseInt(document.getElementById("xpUsuario").innerText) + 50;
+      atualizarNivel();
+
+      // RECURSO DE COMPOSTAGEM
       let extraCompostagem = "";
       if (maiorClasse === "comida") {
         extraCompostagem = `
           <div class="p-4 rounded-xl bg-amber-50 border-l-4 border-amber-500 shadow-sm mt-3 animate-fade-in">
             <h5 class="font-bold text-amber-900 text-sm mb-1 flex items-center gap-1"><i class="fa-solid fa-leaf"></i> Guia de Compostagem</h5>
-            <p class="text-xs text-amber-800 leading-relaxed mb-2">Transforme esse resíduo em adubo para plantas!</p>
             <ul class="text-[11px] text-amber-900 space-y-1">
-              <li><strong>✅ O que PODE ir:</strong> Cascas, folhas, pó de café, filtros de papel, cascas de ovos trituradas.</li>
-              <li><strong>❌ O que NÃO PODE:</strong> Carnes, laticínios, óleos, gorduras, ossos ou restos com muito sal.</li>
+              <li><strong>✅ PODE:</strong> Cascas, folhas, borra de café, ovos.</li>
+              <li><strong>❌ NÃO PODE:</strong> Carnes, laticínios, óleos, ossos.</li>
             </ul>
           </div>
         `;
@@ -187,26 +224,24 @@ window.scanearObjeto = async () => {
             <p class="text-sm text-slate-600 leading-relaxed">${dadosObjeto.dica}</p>
             
             <div class="mt-3 pt-3 border-t border-slate-200">
-              <p class="text-[11px] text-slate-500 leading-relaxed">
-                <strong class="text-slate-600">Outros nomes e exemplos:</strong> ${dadosObjeto.sinonimos}
-              </p>
+              <p class="text-[11px] text-slate-500 leading-relaxed"><strong class="text-slate-600">Sinônimos:</strong> ${dadosObjeto.sinonimos}</p>
             </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-blue-50 border border-blue-200 shadow-sm">
+            <p class="text-[11px] font-bold text-blue-800 uppercase mb-1">💡 Curiosidade de Impacto</p>
+            <p class="text-xs text-blue-900">${dadosObjeto.curiosidade}</p>
           </div>
 
           ${extraCompostagem}
 
           <div class="p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 shadow-sm text-xs font-medium flex gap-2 items-start">
             <span class="text-lg">💖</span>
-            <div>
-              <p class="font-bold mb-0.5">Obrigado por reciclar!</p>
-              <p class="opacity-90">${agradecimento}</p>
-            </div>
+            <div><p class="font-bold mb-0.5">+50 XP Ganho!</p><p class="opacity-90">${agradecimento}</p></div>
           </div>
         </div>
       `;
 
-      document.getElementById("xpUsuario").innerText = parseInt(document.getElementById("xpUsuario").innerText) + 50;
-      mostrarAviso("+50 Pontos Eco! 🌱", "sucesso");
     } else {
       resultado.innerHTML = `
         <div class="p-4 rounded-xl bg-slate-100 text-slate-700 text-xs text-center mt-3">
@@ -217,12 +252,12 @@ window.scanearObjeto = async () => {
 
   } catch (e) {
     console.error(e);
-    mostrarAviso("Erro na captura de imagem da IA. Tente novamente.", "erro");
+    mostrarAviso("Erro na captura de imagem. Tente novamente.", "erro");
   }
 };
 
 /* =======================================================
-   MURAL, LOGINS E NAVEGAÇÃO (Mural Blindado)
+   MURAL, LOGINS E NAVEGAÇÃO
 ======================================================= */
 window.login = async () => {
   const e = document.getElementById("email").value.trim(); const s = document.getElementById("senha").value;
@@ -231,24 +266,24 @@ window.login = async () => {
 };
 window.registrar = async () => {
   const e = document.getElementById("email").value.trim(); const s = document.getElementById("senha").value;
-  if(!e||!s||s.length<6){ mostrarAviso("E-mail válido e senha mínima de 6 caracteres são obrigatórios.","erro"); return; }
+  if(!e||!s||s.length<6){ mostrarAviso("E-mail válido e senha mínima de 6 caracteres.","erro"); return; }
   try{ await createUserWithEmailAndPassword(auth,e,s); mostrarAviso("Conta ativada com sucesso! 🎉","sucesso"); }catch(err){ mostrarAviso("Erro ao realizar cadastro","erro"); }
 };
 window.logout = async () => { await signOut(auth); mostrarAviso("Sessão encerrada","info"); };
 
 onAuthStateChanged(auth, (u) => {
-  if (u) { document.getElementById("loginBox").classList.add("hidden"); document.getElementById("appBox").classList.remove("hidden"); document.getElementById("usuario").innerText = u.email; carregarMensagens(); }
+  if (u) { document.getElementById("loginBox").classList.add("hidden"); document.getElementById("appBox").classList.remove("hidden"); document.getElementById("usuario").innerText = u.email; carregarMensagens(); atualizarNivel(); }
   else { document.getElementById("loginBox").classList.remove("hidden"); document.getElementById("appBox").classList.add("hidden"); pararCamera(); }
 });
 
 window.enviarMensagem = async () => {
   const t = document.getElementById("novaMensagem").value.trim(); const u = auth.currentUser;
   if(!u||!t) return;
-  if(termosProibidos.some(p => t.toLowerCase().includes(p))){ mostrarAviso("Mensagem bloqueada por violar os termos de respeito da comunidade! ⚠️","erro"); document.getElementById("novaMensagem").value=""; return; }
+  if(termosProibidos.some(p => t.toLowerCase().includes(p))){ mostrarAviso("Mensagem bloqueada por violar os termos! ⚠️","erro"); document.getElementById("novaMensagem").value=""; return; }
   try{ await addDoc(collection(db, "mensagens"), { usuario: u.email, texto: t, data: serverTimestamp() }); document.getElementById("novaMensagem").value = ""; }catch(e){}
 };
 
-window.deletarMensagem = async (id) => { if(confirm("Deseja deletar permanentemente esta mensagem do mural?")){ try{ await deleteDoc(doc(db,"mensagens",id)); mostrarAviso("Mensagem removida.","info"); }catch(e){} } };
+window.deletarMensagem = async (id) => { if(confirm("Deseja deletar?")){ try{ await deleteDoc(doc(db,"mensagens",id)); }catch(e){} } };
 
 function carregarMensagens() {
   const q = query(collection(db, "mensagens"), orderBy("data", "desc"));
@@ -256,7 +291,7 @@ function carregarMensagens() {
     const lista = document.getElementById("listaMensagens"); if(!lista) return; lista.innerHTML = "";
     const mail = auth.currentUser?.email;
     s.forEach(docSnap => {
-      const m = docSnap.data(); const btn = mail === EMAIL_ADMIN ? `<button onclick="deletarMensagem('${docSnap.id}')" class="text-red-500 text-[10px] px-2 py-0.5 bg-red-50 rounded border border-red-200 font-bold flex items-center gap-1"><i class="fa-solid fa-trash"></i> Apagar</button>` : "";
+      const m = docSnap.data(); const btn = mail === EMAIL_ADMIN ? `<button onclick="deletarMensagem('${docSnap.id}')" class="text-red-500 text-[10px] px-2 py-0.5 bg-red-50 rounded border border-red-200 font-bold"><i class="fa-solid fa-trash"></i></button>` : "";
       lista.innerHTML += `<div class="p-3 bg-slate-50 rounded-xl mb-2 border-l-4 border-green-500 shadow-sm flex justify-between items-center"><div><span class="font-bold text-xs text-green-700">${m.usuario}</span><p class="text-sm text-slate-700 mt-0.5">${m.texto}</p></div>${btn}</div>`;
     });
   });
@@ -274,13 +309,15 @@ window.mudarAba = (nome) => {
   event.target.classList.add("bg-green-600", "text-white");
   if(nome === "escanear") abrirCamera(); else pararCamera();
 };
+
+window.onload = atualizarNivel;
 </script>
 
 <style>
 * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
 body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); min-height: 100vh; }
 .card{ background:white; border-radius:28px; padding:24px; box-shadow: 0 8px 32px rgba(22, 163, 74, 0.12); border: 1px solid rgba(22, 163, 74, 0.08); }
-.topo{ background:linear-gradient(135deg, #16a34a 0%, #15803d 100%); border-radius:24px; padding:24px; color:white; margin-bottom:20px; box-shadow: 0 4px 12px rgba(21, 128, 61, 0.2); }
+.topo{ background:linear-gradient(135deg, #16a34a 0%, #15803d 100%); border-radius:24px; padding:20px; color:white; margin-bottom:20px; box-shadow: 0 4px 12px rgba(21, 128, 61, 0.2); }
 .scan-frame { position: relative; width: 100%; height: 320px; border-radius: 20px; overflow: hidden; background: #000; margin: 15px 0; }
 .scan-line { position: absolute; width: 100%; height: 3px; background: #4ade80; box-shadow: 0 0 8px #4ade80; animation: scan 2s linear infinite; z-index: 10; }
 @keyframes scan{ 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
@@ -294,10 +331,10 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
   <div class="card">
     <div class="topo">
       <h1 class="text-2xl font-black flex items-center gap-2">🌱 EcoScan</h1>
-      <p class="mt-1 opacity-90 text-xs">Inteligência Ambiental para um futuro sustentável</p>
-      <div class="mt-3 flex justify-between items-center text-xs font-bold">
+      <p id="tituloUsuario" class="mt-1 text-[10px] font-black uppercase tracking-wider text-green-200">Iniciante Verde 🌱</p>
+      <div class="mt-4 flex justify-between items-center text-xs font-bold border-t border-green-500/30 pt-3">
         <span>Progresso Eco:</span>
-        <span class="bg-white/20 px-3 py-1 rounded-full">XP: <span id="xpUsuario">350</span></span>
+        <span class="bg-white/20 px-3 py-1 rounded-full border border-white/30 shadow-inner">XP: <span id="xpUsuario">150</span></span>
       </div>
     </div>
 
@@ -350,7 +387,7 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
         <h3 class="font-bold text-sm text-slate-700 mb-2">💬 EcoMural Coletivo</h3>
         <div id="listaMensagens" class="flex-1 overflow-y-auto bg-slate-50 border border-slate-100 rounded-xl p-3 mb-2"></div>
         <div class="flex gap-2">
-          <input id="novaMensagem" type="text" placeholder="Compartilhe uma dica verde..." class="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-green-500" />
+          <input id="novaMensagem" type="text" placeholder="Compartilhe uma dica..." class="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-green-500" />
           <button onclick="enviarMensagem()" class="bg-green-600 text-white px-4 rounded-xl font-bold"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
       </div>
