@@ -1,489 +1,390 @@
-<!DOCTYPE html>
+<!DOCTYPEDOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-
-<title>EcoScan Pro</title>
-
-<script src="https://cdn.tailwindcss.com"></script>
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
-
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-
-<style>
-html{
-    scroll-behavior:smooth;
-}
-
-body{
-    margin:0;
-    background:#f8fafc;
-    font-family:Arial, sans-serif;
-    overflow-x:hidden;
-}
-
-.page{
-    display:none;
-}
-
-.page.active{
-    display:block;
-}
-
-.bottom-space{
-    height:100px;
-}
-
-.camera-box{
-    position:relative;
-    width:100%;
-    height:360px;
-    border-radius:28px;
-    overflow:hidden;
-    background:#000;
-}
-
-#camera-feed{
-    width:100%;
-    height:100%;
-    object-fit:cover;
-}
-
-.overlay{
-    position:absolute;
-    inset:0;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    pointer-events:none;
-}
-
-.scan-frame{
-    width:80%;
-    height:75%;
-    border:2px solid rgba(255,255,255,0.2);
-    border-radius:24px;
-    position:relative;
-    overflow:hidden;
-}
-
-.scan-line{
-    position:absolute;
-    width:100%;
-    height:3px;
-    background:#4ade80;
-    box-shadow:0 0 15px #4ade80;
-    animation:scan 2s linear infinite;
-}
-
-@keyframes scan{
-    0%{ top:0; }
-    100%{ top:100%; }
-}
-
-.navbar{
-    position:fixed;
-    bottom:0;
-    left:0;
-    width:100%;
-    background:white;
-    border-top:1px solid #e5e7eb;
-    display:flex;
-    justify-content:space-around;
-    padding:12px 0;
-    z-index:999;
-}
-
-.nav-btn{
-    border:none;
-    background:none;
-    color:#64748b;
-    font-size:12px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:5px;
-}
-
-.nav-btn.active{
-    color:#16a34a;
-    font-weight:bold;
-}
-
-.card{
-    background:white;
-    border-radius:24px;
-    padding:18px;
-    box-shadow:0 4px 12px rgba(0,0,0,0.05);
-}
-
-.message{
-    background:#f1f5f9;
-    padding:12px;
-    border-radius:14px;
-    margin-top:10px;
-}
-
-.hidden{
-    display:none;
-}
-</style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>EcoScan Pro</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    
+    <style>
+        html{
+            scroll-behavior:smooth;
+        }
+        body{
+            margin:0;
+            background:#f8fafc;
+            font-family:Arial, sans-serif;
+            overflow-x:hidden;
+        }
+        .page{
+            display:none;
+        }
+        .page.active{
+            display:block;
+        }
+        .bottom-space{
+            height:100px;
+        }
+        .camera-box{
+            position:relative;
+            width:100%;
+            height:360px;
+            border-radius:28px;
+            overflow:hidden;
+            background:#000;
+        }
+        #camera-feed{
+            width:100%;
+            height:100%;
+            object-fit:cover;
+        }
+        .overlay{
+            position:absolute;
+            inset:0;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            pointer-events:none;
+        }
+        .scan-frame{
+            width:80%;
+            height:75%;
+            border:2px solid rgba(255,255,255,0.2);
+            border-radius:24px;
+            position:relative;
+            overflow:hidden;
+        }
+        .scan-line{
+            position:absolute;
+            width:100%;
+            height:4px;
+            background:#4ade80;
+            animation:scan 2s linear infinite;
+        }
+        @keyframes scan{
+            0%{ top: 0%; }
+            50%{ top: 100%; }
+            100%{ top: 0%; }
+        }
+        .nav-btn{
+            border:none;
+            background:none;
+            color:#64748b;
+            font-size:12px;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            gap:5px;
+        }
+        .nav-btn.active{
+            color:#16a34a;
+            font-weight:bold;
+        }
+        .card{
+            background:white;
+            border-radius:24px;
+            padding:18px;
+            box-shadow:0 4px 12px rgba(0,0,0,0.05);
+        }
+        .message{
+            background:#f1f5f9;
+            padding:12px;
+            border-radius:14px;
+            margin-top:10px;
+        }
+        .hidden{
+            display:none;
+        }
+    </style>
 </head>
 
 <body>
-
-<header class="bg-gradient-to-r from-green-700 to-green-500 text-white p-5 sticky top-0 z-50 shadow-lg">
-    <div class="flex justify-between items-center max-w-xl mx-auto">
-        <div>
-            <h1 class="text-2xl font-black">♻️ EcoScan</h1>
-            <p class="text-xs opacity-90">Inteligência ambiental inteligente</p>
-        </div>
-        <div class="bg-white/20 px-4 py-2 rounded-full text-sm font-bold">
-            XP: <span id="xp">350</span>
-        </div>
-    </div>
-</header>
-
-<main class="max-w-xl mx-auto p-4">
-
-<section id="home" class="page active space-y-4">
-    <div class="camera-box">
-        <video id="camera-feed" autoplay playsinline muted class="hidden"></video>
-        
-        <div id="camera-placeholder" class="absolute inset-0 bg-gradient-to-b from-green-950 to-black flex flex-col items-center justify-center text-white">
-            <i class="fa-solid fa-camera text-5xl opacity-30 mb-4"></i>
-            <p class="opacity-50 text-sm">Câmera pronta para iniciar</p>
-        </div>
-
-        <div class="overlay">
-            <div class="scan-frame">
-                <div class="scan-line"></div>
+    <header class="bg-gradient-to-r from-green-700 to-green-500 text-white p-5 sticky top-0 z-50 shadow-lg">
+        <div class="flex justify-between items-center max-w-xl mx-auto">
+            <div>
+                <h1 class="text-2xl font-black">🌱 EcoScan</h1>
+                <p class="text-xs opacity-90">Inteligência ambiental inteligente</p>
+            </div>
+            <div class="bg-white/20 px-4 py-2 rounded-full text-sm font-bold">
+                XP: <span id="xp">350</span>
             </div>
         </div>
-    </div>
+    </header>
 
-    <div class="grid grid-cols-2 gap-3">
-        <button onclick="abrirCamera()" class="bg-green-600 text-white rounded-2xl py-4 font-bold shadow-lg active:scale-95 transition">
-            <i class="fa-solid fa-camera mr-2"></i> Abrir Câmera
-        </button>
-        <button onclick="scanearObjeto()" class="bg-amber-500 text-white rounded-2xl py-4 font-bold shadow-lg active:scale-95 transition">
-            <i class="fa-solid fa-magnifying-glass mr-2"></i> Escanear
-        </button>
-    </div>
+    <main class="max-w-xl mx-auto p-4">
+        <section id="home" class="page active space-y-4">
+            <div class="camera-box">
+                <video id="camera-feed" autoplay playsinline muted class="hidden"></video>
+                <div id="camera-placeholder" class="absolute inset-0 bg-gradient-to-b from-green-950 to-black flex flex-col items-center justify-center text-white">
+                    <i class="fa-solid fa-camera text-5xl opacity-30 mb-4"></i>
+                    <p class="opacity-50 text-sm">Câmera pronta para iniciar</p>
+                </div>
+                <div class="overlay">
+                    <div class="scan-frame">
+                        <div class="scan-line"></div>
+                    </div>
+                </div>
+            </div>
 
-    <div id="status" class="card text-center text-sm font-semibold text-green-800">
-        Pronto para iniciar o scanner.
-    </div>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="abrirCamera()" class="bg-green-600 text-white rounded-2xl py-4 font-bold shadow-lg active:scale-95">
+                    <i class="fa-solid fa-camera mr-2"></i> Abrir Câmera
+                </button>
+                <button onclick="scanearObjeto()" class="bg-amber-500 text-white rounded-2xl py-4 font-bold shadow-lg active:scale-95">
+                    <i class="fa-solid fa-qrcode mr-2"></i> Escanear
+                </button>
+            </div>
 
-    <div id="resultado" class="card hidden text-center space-y-3">
-        <div id="tipo" class="inline-block bg-green-100 text-green-700 text-xs font-black px-4 py-2 rounded-full">---</div>
-        <h2 id="nomeObjeto" class="text-2xl font-black text-slate-800">---</h2>
-        <div id="nota" class="inline-block bg-amber-100 text-amber-700 px-3 py-1 rounded-lg text-xs font-bold">---</div>
-        <p id="descricao" class="text-sm text-slate-600"></p>
-        <button onclick="confirmarDescarte()" class="w-full bg-green-600 text-white py-4 rounded-2xl font-bold active:scale-95 transition">
-            Confirmar Descarte (+50 XP)
-        </button>
-    </div>
-</section>
+            <div id="resultado-card" class="card hidden space-y-3 animate-pulse">
+                <div class="flex items-center gap-3">
+                    <div class="bg-green-100 text-green-700 w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold">♻️</div>
+                    <div>
+                        <h3 id="res-objeto" class="font-bold text-lg text-slate-800">Analisando...</h3>
+                        <p id="res-tipo" class="text-xs text-green-600 font-semibold uppercase tracking-wider">Aguardando</p>
+                    </div>
+                </div>
+                <p id="res-dica" class="text-sm text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl"></p>
+            </div>
+        </section>
 
-<section id="mapa" class="page space-y-4">
-    <div class="card space-y-4">
-        <h2 class="text-2xl font-black text-slate-800 text-center">📍 Ecopontos</h2>
-        <button onclick="buscarLocalizacao()" class="w-full bg-green-600 text-white py-4 rounded-2xl font-bold active:scale-95 transition">
-            Encontrar Ecopontos
-        </button>
-        <div id="localizacao" class="text-sm text-slate-600 text-center font-medium"></div>
-        <iframe id="mapaFrame" class="w-full h-[320px] rounded-2xl border hidden" loading="lazy"></iframe>
-    </div>
-</section>
+        <section id="mapa" class="page space-y-4">
+            <div class="card space-y-3">
+                <h2 class="font-bold text-xl text-slate-800">📍 Pontos de Coleta</h2>
+                <p class="text-sm text-slate-500">Encontre locais próximos para descarte correto.</p>
+                <div class="w-100 h-64 bg-slate-100 rounded-2xl overflow-hidden relative border border-slate-200">
+                    <iframe class="w-full h-full border-none" src="https://www.google.com/maps/embed?pb=!1m16!1m12!1m3!1d14798.57245958611!2d-48.56853245!3d-22.2725454!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!2m1!1sreciclagem!5e0!3m2!1spt-BR!2sbr!4v1716245000000!5m2!1spt-BR!2sbr" allowfullscreen="" loading="lazy"></iframe>
+                </div>
+            </div>
+        </section>
 
-<section id="social" class="page space-y-4">
-    <div class="card space-y-3">
-        <h2 class="text-xl font-black text-slate-800">👤 Conta</h2>
-        <input id="email" type="email" placeholder="Seu e-mail" class="w-full border rounded-2xl p-4 text-sm focus:outline-green-600">
-        <input id="senha" type="password" placeholder="Sua senha" class="w-full border rounded-2xl p-4 text-sm">
-        <button onclick="criarConta()" class="w-full bg-green-600 text-white py-4 rounded-2xl font-bold active:scale-95 transition">
-            Entrar / Criar Conta
-        </button>
-        <div id="usuarioAtual" class="text-center text-sm text-slate-500 font-medium">Não conectado</div>
-    </div>
+        <section id="social" class="page space-y-4">
+            <div class="card space-y-3">
+                <h2 class="font-bold text-xl text-slate-800"><i class="fa-solid fa-user text-green-600 mr-2"></i>Conta</h2>
+                <div class="space-y-2">
+                    <input type="email" id="email" placeholder="Seu e-mail" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-green-500" />
+                    <input type="password" id="senha" placeholder="Sua senha" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-green-500" />
+                    <button onclick="fazerLogin()" class="w-full bg-slate-900 text-white p-3 rounded-xl font-bold text-sm shadow-md active:scale-95">
+                        Entrar / Criar Conta
+                    </button>
+                    <p id="usuarioAtual" class="text-xs text-center text-slate-500 font-semibold mt-2">Não conectado</p>
+                </div>
+            </div>
 
-    <div class="card space-y-3">
-        <h2 class="text-xl font-black text-slate-800">💬 Comunidade</h2>
-        <textarea id="mensagem" placeholder="Digite uma mensagem..." class="w-full border rounded-2xl p-4 h-28 text-sm"></textarea>
-        <button onclick="enviarMensagem()" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold active:scale-95 transition">
-            Enviar Mensagem
-        </button>
-    </div>
+            <div class="card space-y-3 flex flex-col h-[400px]">
+                <h2 class="font-bold text-xl text-slate-800"><i class="fa-solid fa-comments text-green-600 mr-2"></i>Comunidade</h2>
+                
+                <div id="listaMensagens" class="flex-1 overflow-y-auto space-y-3 pr-1 text-sm">
+                    <p class="text-xs text-slate-400 text-center py-8">Carregando mensagens da nuvem...</p>
+                </div>
 
-    <div id="listaMensagens" class="space-y-3"></div>
-</section>
+                <div class="flex gap-2 pt-2 border-t border-slate-100">
+                    <input type="text" id="mensagem" placeholder="Digite uma mensagem..." class="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-green-500" />
+                    <button onclick="enviarMensagem()" class="bg-green-600 text-white px-4 rounded-xl font-bold active:scale-95">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
 
-<div class="bottom-space"></div>
-</main>
+        <div class="bottom-space"></div>
+    </main>
 
-<nav class="navbar">
-    <button onclick="trocarPagina('home', this)" class="nav-btn active">
-        <i class="fa-solid fa-house text-xl"></i> Home
-    </button>
-    <button onclick="trocarPagina('mapa', this)" class="nav-btn">
-        <i class="fa-solid fa-location-dot text-xl"></i> Mapa
-    </button>
-    <button onclick="trocarPagina('social', this)" class="nav-btn">
-        <i class="fa-solid fa-users text-xl"></i> Social
-    </button>
-</nav>
+    <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-100 p-4 shadow-xl z-50">
+        <div class="max-w-xl mx-auto flex justify-around items-center">
+            <button onclick="mudarAba('home')" id="btn-home" class="nav-btn active">
+                <i class="fa-solid fa-house text-xl"></i>
+                <span>Home</span>
+            </button>
+            <button onclick="mudarAba('mapa')" id="btn-mapa" class="nav-btn">
+                <i class="fa-solid fa-map-location-dot text-xl"></i>
+                <span>Mapa</span>
+            </button>
+            <button onclick="mudarAba('social')" id="btn-social" class="nav-btn">
+                <i class="fa-solid fa-users text-xl"></i>
+                <span>Social</span>
+            </button>
+        </div>
+    </nav>
 
-<script>
-/* =========================
-   FIREBASE CONFIG (Sincronizado)
-========================= */
-const firebaseConfig = {
-  apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe84hPey1KXw",
-  authDomain: "ecoscan-96a80.firebaseapp.com",
-  projectId: "ecoscan-96a80",
-  storageBucket: "ecoscan-96a80.firebasestorage.app",
-  messagingSenderId: "532877468700",
-  appId: "1:532877468700:web:689d25217275313341abd9",
-  measurementId: "G-ZN2B54CN07"
-};
+    <script>
+        // CONFIGURAÇÃO DO CONFIG DO FIREBASE CORRIGIDO EM LINHA RETA
+        const firebaseConfig = {
+          apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe84hPey1KXw",
+          authDomain: "ecoscan-96a80.firebaseapp.com",
+          projectId: "ecoscan-96a80",
+          storageBucket: "ecoscan-96a80.firebasestorage.app",
+          messagingSenderId: "532877468700",
+          appId: "1:532877468700:web:689d25217275313341abd9",
+          measurementId: "G-ZN2B54CN07"
+        };
 
-// Inicialização segura do Firebase
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
 
-/* =========================
-   VARIÁVEIS GERAIS
-========================= */
-let stream = null;
-let xp = 350;
-
-/* =========================
-   TROCAR PÁGINAS
-========================= */
-function trocarPagina(id, btn){
-    document.querySelectorAll(".page").forEach(page => page.classList.remove("active"));
-    document.getElementById(id).classList.add("active");
-    document.querySelectorAll(".nav-btn").forEach(button => button.classList.remove("active"));
-    btn.classList.add("active");
-}
-
-/* =========================
-   CÂMERA REAL DO DISPOSITIVO
-========================= */
-async function abrirCamera(){
-    try{
-        const video = document.getElementById("camera-feed");
-        const placeholder = document.getElementById("camera-placeholder");
-
-        if(stream) return;
-
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: "environment",
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            },
-            audio: false
-        });
-
-        video.srcObject = stream;
-        video.classList.remove("hidden");
-        placeholder.classList.add("hidden");
-        document.getElementById("status").innerText = "Câmera iniciada com sucesso.";
-    }catch(error){
-        console.error(error);
-        document.getElementById("status").innerText = "Erro ao acessar câmera. Verifique as permissões.";
-    }
-}
-
-/* =========================
-   IA DE ESCANEAMENTO
-========================= */
-function scanearObjeto(){
-    const status = document.getElementById("status");
-    status.innerText = "Analisando com Inteligência Artificial...";
-
-    try{
-        const objetos = [
-            { tipo:"PLÁSTICO", nome:"Garrafa PET", nota:"Sustentabilidade B", descricao:"Descarte na lixeira VERMELHA. Lave a embalagem para evitar resíduos." },
-            { tipo:"METAL", nome:"Lata de Alumínio", nota:"Sustentabilidade A+", descricao:"Descarte na lixeira AMARELA. Material 100% reciclável." },
-            { tipo:"VIDRO", nome:"Garrafa de Vidro", nota:"Sustentabilidade A", descricao:"Descarte na lixeira VERDE. Se estiver quebrada, embale com segurança." },
-            { tipo:"PAPEL", nome:"Caixa de Papelão", nota:"Sustentabilidade A", descricao:"Descarte na lixeira AZUL. Desmonte a caixa para reduzir o volume." }
-        ];
-
-        setTimeout(() => {
-            const objeto = objetos[Math.floor(Math.random() * objetos.length)];
-
-            document.getElementById("resultado").classList.remove("hidden");
-            document.getElementById("tipo").innerText = objeto.tipo;
-            document.getElementById("nomeObjeto").innerText = objeto.nome;
-            document.getElementById("nota").innerText = objeto.nota;
-            document.getElementById("descricao").innerText = objeto.descricao;
-            status.innerText = "Objeto identificado com sucesso!";
-        }, 1000);
-
-    }catch(error){
-        console.error(error);
-        status.innerText = "Falha no escaneamento neural.";
-    }
-}
-
-/* =========================
-   SISTEMA DE PROGRESSÃO (XP)
-========================= */
-function confirmarDescarte(){
-    xp += 50;
-    document.getElementById("xp").innerText = xp;
-    alert("Incrível! +50 XP adicionados à sua conta.");
-    document.getElementById("resultado").classList.add("hidden");
-    document.getElementById("status").innerText = "Descarte registrado. Pronto para o próximo.";
-}
-
-/* =========================
-   GEOLOCALIZAÇÃO CORRIGIDA (HTTPS)
-========================= */
-function buscarLocalizacao(){
-    const local = document.getElementById("localizacao");
-    if(!navigator.geolocation){
-        alert("Geolocalização não suportada neste dispositivo.");
-        return;
-    }
-
-    local.innerText = "Buscando coordenadas GPS...";
-
-    navigator.geolocation.getCurrentPosition(
-        position => {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-
-            local.innerHTML = `<strong>Sua posição:</strong> Lat ${lat.toFixed(4)} | Lon ${lng.toFixed(4)}`;
-
-            const mapa = document.getElementById("mapaFrame");
-            mapa.src = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
-            mapa.classList.remove("hidden");
-        },
-        error => {
-            console.error(error);
-            local.innerText = "Não foi possível carregar a localização.";
-            alert("Erro ao obter localização. Ative o GPS do celular.");
-        }
-    );
-}
-
-/* =========================
-   LOGIN E CONTAS
-========================= */
-async function criarConta(){
-    try{
-        const email = document.getElementById("email").value.trim();
-        const senha = document.getElementById("senha").value;
-
-        if(!email || !senha){
-            alert("Por favor, preencha todos os campos.");
-            return;
+        // Controle de Abas
+        function mudarAba(nomeAba) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            
+            document.getElementById(nomeAba).classList.add('active');
+            document.getElementById('btn-' + nomeAba).classList.add('active');
+            
+            if(nomeAba === 'home') abrirCamera();
+            else fecharCamera();
         }
 
-        try{
-            await auth.createUserWithEmailAndPassword(email, senha);
-            alert("Conta criada com sucesso!");
-        }catch(err){
-            if(err.code === 'auth/email-already-in-use'){
-                await auth.signInWithEmailAndPassword(email, senha);
-                alert("Login efetuado com sucesso!");
-            } else {
-                throw err;
+        // Sistema de Câmera Local
+        let stream = null;
+        async function abrirCamera() {
+            const feed = document.getElementById('camera-feed');
+            const placeholder = document.getElementById('camera-placeholder');
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                feed.srcObject = stream;
+                feed.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } catch (err) {
+                console.error("Erro ao acessar câmera: ", err);
             }
         }
-    }catch(error){
-        console.error(error);
-        alert(error.message);
-    }
-}
 
-/* =========================
-   OBSERVAR MUDANÇA DE LOGIN
-========================= */
-auth.onAuthStateChanged(user => {
-    const usuario = document.getElementById("usuarioAtual");
-    if(user){
-        usuario.innerHTML = `<span class="text-green-600 font-bold">● Online:</span> ${user.email}`;
-    }else{
-        usuario.innerText = "Não conectado";
-    }
-});
-
-/* =========================
-   MENSAGENS NA NUVEM
-========================= */
-async function enviarMensagem(){
-    try{
-        const texto = document.getElementById("mensagem").value.trim();
-        const user = auth.currentUser;
-
-        if(!user){
-            alert("Faça login na aba 'Conta' antes de enviar uma mensagem.");
-            return;
+        function fecharCamera() {
+            if(stream) {
+                stream.getTracks().forEach(track => track.stop());
+                document.getElementById('camera-feed').classList.add('hidden');
+                document.getElementById('camera-placeholder').classList.remove('hidden');
+            }
         }
 
-        if(!texto){
-            alert("O campo de texto não pode ficar vazio.");
-            return;
+        // Simulador de Escaneamento Inteligente
+        const bancoDicas = [
+            { obj: "Garrafa PET", tipo: "Plástico", dica: "Lave antes de descartar. Destine à lixeira vermelha ou sacolas de recicláveis secos." },
+            { obj: "Lata de Refrigerante", tipo: "Metal", dica: "Amasse a latinha para ocupar menos espaço. Descarte na lixeira amarela." },
+            { obj: "Caixa de Papelão", tipo: "Papel", dica: "Desmonte e dobre a caixa para otimizar o transporte. Lixeira azul." },
+            { obj: "Pote de Maionese", tipo: "Vidro", dica: "Retire totalmente os resíduos orgânicos. Vidros quebrados devem ser embrulhados por segurança." }
+        ];
+
+        function scanearObjeto() {
+            const card = document.getElementById('resultado-card');
+            card.classList.remove('hidden');
+            document.getElementById('res-objeto').innerText = "Analisando imagem...";
+            document.getElementById('res-tipo').innerText = "Processando";
+            document.getElementById('res-dica').innerText = "";
+
+            setTimeout(() => {
+                const sorteio = bancoDicas[Math.floor(Math.random() * bancoDicas.length)];
+                document.getElementById('res-objeto').innerText = sorteio.obj;
+                document.getElementById('res-tipo').innerText = sorteio.tipo;
+                document.getElementById('res-dica').innerText = sorteio.dica;
+                card.classList.remove('animate-pulse');
+                
+                // Ganhar XP
+                const xpAtual = parseInt(document.getElementById('xp').innerText);
+                document.getElementById('xp').innerText = xpAtual + 50;
+            }, 1800);
         }
 
-        await db.collection("mensagens").add({
-            usuario: user.email,
-            texto: texto,
-            data: Date.now()
+        // Autenticação Firebase (Login e Cadastro integrados)
+        async function fazerLogin() {
+            const email = document.getElementById('email').value.trim();
+            const senha = document.getElementById('senha').value;
+
+            if(!email || !senha) {
+                alert("Preencha todos os campos da conta.");
+                return;
+            }
+
+            try {
+                await auth.signInWithEmailAndPassword(email, senha);
+            } catch (erro) {
+                if (erro.code === 'auth/user-not-found' || erro.code === 'auth/invalid-credential') {
+                    try {
+                        await auth.createUserWithEmailAndPassword(email, senha);
+                        alert("Nova conta ambiental criada com sucesso!");
+                    } catch (erroCadastro) {
+                        alert("Erro ao criar conta: " + erroCadastro.message);
+                    }
+                } else {
+                    alert("Erro no login: " + erro.message);
+                }
+            }
+        }
+
+        // Monitor do Estado de Login
+        auth.onAuthStateChanged(user => {
+            const usuario = document.getElementById("usuarioAtual");
+            if(user){
+                usuario.innerHTML = `<span class="text-green-600 font-bold">● Online:</span> ${user.email}`;
+            }else{
+                usuario.innerText = "Não conectado";
+            }
         });
 
-        document.getElementById("mensagem").value = "";
-    }catch(error){
-        console.error(error);
-        alert("Erro ao enviar mensagem para o servidor.");
-    }
-}
+        // Enviar Mensagens do Chat para a Nuvem
+        async function enviarMensagem(){
+            try {
+                const texto = document.getElementById('mensagem').value.trim();
+                const user = auth.currentUser;
 
-/* =========================
-   CARREGAMENTO SEGURO DA LISTA
-========================= */
-try {
-    db.collection("mensagens")
-    .orderBy("data", "desc")
-    .onSnapshot(snapshot => {
-        const lista = document.getElementById("listaMensagens");
-        if(!lista) return;
-        
-        lista.innerHTML = "";
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            lista.innerHTML += `
-                <div class="message border-l-4 border-green-500 shadow-sm bg-white p-4 rounded-r-xl">
-                    <h3 class="font-bold text-xs text-slate-700">${data.usuario}</h3>
-                    <p class="text-sm mt-1 text-slate-600">${data.texto}</p>
-                </div>
-            `;
+                if(!user){
+                    alert("Faça login na aba 'Conta' antes de enviar uma mensagem.");
+                    return;
+                }
+                if(!texto){
+                    alert("O campo de texto não pode ficar vazio.");
+                    return;
+                }
+
+                await db.collection("mensagens").add({
+                    usuario: user.email,
+                    texto: texto,
+                    data: Date.now()
+                });
+
+                document.getElementById('mensagem').value = "";
+            } catch(error){
+                console.error(error);
+                alert("Erro ao enviar mensagem para o servidor.");
+            }
+        }
+
+        // Escutar Mensagens em Tempo Real da Nuvem
+        try {
+            db.collection("mensagens")
+            .orderBy("data", "desc")
+            .onSnapshot(snapshot => {
+                const lista = document.getElementById("listaMensagens");
+                if(!lista) return;
+
+                lista.innerHTML = "";
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    lista.innerHTML += `
+                        <div class="message border-l-4 border-green-500 shadow-sm bg-white p-4 rounded-r-xl">
+                            <h3 class="font-bold text-xs text-slate-700">${data.usuario}</h3>
+                            <p class="text-sm mt-1 text-slate-600">${data.texto}</p>
+                        </div>
+                    `;
+                });
+            }, error => {
+                console.log("Aguardando configuração das chaves de banco de dados...");
+            });
+        } catch(e) {
+            console.error("Firebase offline ou não configurado.");
+        }
+
+        // Desligar feed se fechar o app
+        window.addEventListener("beforeunload", () => {
+            fecharCamera();
         });
-    }, error => {
-        console.log("Aguardando configuração das chaves de banco de dados...");
-    });
-} catch(e) {
-    console.error("Firebase offline ou não configurado.");
-}
-
-/* =========================
-   SEGURANÇA DA CÂMERA DO APARELHO
-========================= */
-window.addEventListener("beforeunload", () => {
-    if(stream){
-        stream.getTracks().forEach(track => track.stop());
-    }
-});
-</script>
+    </script>
 </body>
 </html>
