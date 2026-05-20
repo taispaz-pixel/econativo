@@ -184,4 +184,100 @@ function mostrarAviso(t, tipo) {
 
 window.mudarAba = (nome) => {
   document.querySelectorAll(".aba-conteudo").forEach(el => el.classList.add("hidden"));
-  document.querySelectorAll(".aba-btn").forEach(el => el.classList.remove
+  document.querySelectorAll(".aba-btn").forEach(el => el.classList.remove("bg-green-600", "text-white"));
+  document.getElementById(`aba-${nome}`).classList.remove("hidden");
+  event.target.classList.add("bg-green-600", "text-white");
+  if(nome === "escanear") abrirCamera(); else pararCamera();
+};
+
+// Código de registro do Service Worker do PWA
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(() => console.log('PWA Ativo!'));
+}
+
+window.onload = atualizarNivel;
+</script>
+
+<style>
+* { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); min-height: 100vh; }
+.card{ background:white; border-radius:28px; padding:24px; box-shadow: 0 8px 32px rgba(22, 163, 74, 0.12); }
+.topo{ background:linear-gradient(135deg, #16a34a 0%, #15803d 100%); border-radius:24px; padding:20px; color:white; margin-bottom:20px; }
+.scan-frame { position: relative; width: 100%; height: 320px; border-radius: 20px; overflow: hidden; background: #000; margin: 15px 0; }
+.scan-line { position: absolute; width: 100%; height: 3px; background: #4ade80; animation: scan 2s linear infinite; z-index: 10; }
+@keyframes scan{ 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
+</style>
+</head>
+
+<body class="p-4">
+<div class="w-full max-w-lg mx-auto">
+  <div id="aviso" class="hidden p-3 mb-4 rounded-xl text-sm font-medium"></div>
+  <div class="card">
+    <div class="topo">
+      <h1 class="text-2xl font-black flex items-center gap-2">🌱 EcoScan</h1>
+      <p id="tituloUsuario" class="mt-1 text-[10px] font-black uppercase tracking-wider text-green-200">Iniciante Verde 🌱</p>
+      <div class="mt-4 flex justify-between items-center text-xs font-bold border-t border-green-500/30 pt-3">
+        <span>Progresso Eco:</span>
+        <span class="bg-white/20 px-3 py-1 rounded-full">XP: <span id="xpUsuario">150</span></span>
+      </div>
+    </div>
+
+    <div id="loginBox" class="space-y-4">
+      <h3 class="text-lg font-bold text-slate-700 text-center mb-3">Acesse sua Conta</h3>
+      <input id="email" type="email" placeholder="📧 E-mail" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl" />
+      <input id="senha" type="password" placeholder="🔒 Senha" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl" />
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <button onclick="login()" class="bg-green-600 text-white p-4 rounded-xl font-bold">Entrar</button>
+        <button onclick="registrar()" class="bg-slate-900 text-white p-4 rounded-xl font-bold">Criar Conta</button>
+      </div>
+    </div>
+
+    <div id="appBox" class="hidden space-y-4">
+      <div class="flex justify-between items-center bg-green-50 p-3 rounded-xl text-xs">
+        <span class="text-slate-600 font-medium">👤 <span id="usuario"></span></span>
+        <button onclick="logout()" class="text-red-600 font-bold">Sair</button>
+      </div>
+
+      <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
+        <button onclick="mudarAba('escanear')" class="aba-btn py-2.5 rounded-lg text-xs font-bold bg-green-600 text-white">📷 Scanner</button>
+        <button onclick="mudarAba('mapa')" class="aba-btn py-2.5 rounded-lg text-xs font-bold text-slate-600">📍 Mapa</button>
+        <button onclick="mudarAba('chat')" class="aba-btn py-2.5 rounded-lg text-xs font-bold text-slate-600">💬 Mural</button>
+      </div>
+
+      <div id="aba-escanear" class="aba-conteudo space-y-3">
+        <div class="scan-frame">
+          <video id="cameraFeed" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
+          <div id="cameraPlaceholder" class="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center text-white">
+            <i class="fa-solid fa-camera text-4xl opacity-20 mb-2"></i>
+            <p class="text-xs opacity-40">Câmera aguardando ativação</p>
+          </div>
+          <div class="scan-line"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="abrirCamera()" class="bg-green-600 text-white py-3 rounded-xl text-sm font-bold">📷 Ligar Câmera</button>
+          <button onclick="scanearObjeto()" class="bg-amber-500 text-white py-3 rounded-xl text-sm font-bold">🔍 Analisar</button>
+        </div>
+        <div id="resultadoScan" class="hidden"></div>
+      </div>
+
+      <div id="aba-mapa" class="aba-conteudo hidden space-y-2">
+        <h3 class="font-bold text-sm text-slate-700">📍 Postos de Reciclagem</h3>
+        <div class="w-full h-60 bg-slate-100 rounded-xl overflow-hidden">
+          <iframe class="w-full h-full border-none" src="https://maps.google.com/maps?q=postos%20de%20reciclagem&t=&z=13&ie=UTF8&iwloc=&output=embed"></iframe>
+        </div>
+      </div>
+
+      <div id="aba-chat" class="aba-conteudo hidden flex flex-col h-[380px]">
+        <h3 class="font-bold text-sm text-slate-700 mb-2">💬 EcoMural Coletivo</h3>
+        <div id="listaMensagens" class="flex-1 overflow-y-auto bg-slate-50 rounded-xl p-3 mb-2"></div>
+        <div class="flex gap-2">
+          <input id="novaMensagem" type="text" placeholder="Compartilhe uma dica..." class="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
+          <button onclick="enviarMensagem()" class="bg-green-600 text-white px-4 rounded-xl"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</body>
+</html>
