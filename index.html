@@ -1,88 +1,93 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EcoScan - Inteligência Ambiental</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
         const firebaseConfig = { apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw", authDomain: "ecoscan-96a80.firebaseapp.com", projectId: "ecoscan-96a80", storageBucket: "ecoscan-96a80.appspot.com", messagingSenderId: "532877468700", appId: "1:532877468700:web:689d25217275313341abd9", measurementId: "G-ZN2B54CN07" };
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
-        const URL_MODELO = "https://teachablemachine.withgoogle.com/models/v8VnlJGQG/";
+        const URL = "https://teachablemachine.withgoogle.com/models/v8VnlJGQG/";
         let model;
 
-        async function carregarIA() {
-            try {
-                model = await tmImage.load(URL_MODELO + "model.json", URL_MODELO + "metadata.json");
-            } catch (e) { console.error("Erro IA:", e); }
+        async function init() {
+            model = await tmImage.load(URL + "model.json", URL + "metadata.json");
         }
-        carregarIA();
+        init();
 
-        window.login = async () => { 
-            try { await signInWithEmailAndPassword(auth, document.getElementById("email").value, document.getElementById("senha").value); } 
-            catch(e) { alert("Erro ao entrar: " + e.message); } 
+        window.login = async () => {
+            try {
+                await signInWithEmailAndPassword(auth, document.getElementById("email").value, document.getElementById("senha").value);
+                document.getElementById("loginBox").classList.add("hidden");
+                document.getElementById("appBox").classList.remove("hidden");
+            } catch (e) { alert("Erro ao entrar. Verifique os dados."); }
         };
-        window.logout = async () => await signOut(auth);
+
+        window.logout = () => location.reload();
 
         window.ligarCamera = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                document.getElementById("cameraFeed").srcObject = stream;
-            } catch(e) { alert("Erro na câmera: " + e.message); }
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            document.getElementById("cameraFeed").srcObject = stream;
         };
 
         window.scanearObjeto = async () => {
             const res = document.getElementById("resultadoScan");
-            if (!model) return;
             res.classList.remove("hidden");
             res.innerHTML = "Analisando...";
             const pred = await model.predict(document.getElementById("cameraFeed"));
             let m = pred.sort((a,b) => b.probability - a.probability)[0];
-            res.innerHTML = `<div class="bg-white p-3 rounded-lg border font-bold">${m.className} (${(m.probability*100).toFixed(0)}%)</div>`;
+            
+            let dicaExtra = "";
+            if(m.className.toLowerCase().includes("comida")) {
+                dicaExtra = "<br><br><b>Dica:</b> Muitos restos de alimentos servem para compostagem, transformando lixo em adubo rico para plantas!";
+            }
+
+            res.innerHTML = `<div class="bg-white p-4 rounded-xl border border-green-200">
+                <p class="font-bold">Item: ${m.className}</p>
+                <p class="text-sm">Precisão: ${(m.probability*100).toFixed(0)}%</p>
+                ${dicaExtra}
+            </div>`;
         };
 
         window.mudarAba = (id) => {
             document.querySelectorAll('.aba').forEach(a => a.classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
         };
-
-        onAuthStateChanged(auth, (u) => {
-            if(u) { document.getElementById("loginBox").classList.add("hidden"); document.getElementById("appBox").classList.remove("hidden"); }
-            else { document.getElementById("loginBox").classList.remove("hidden"); document.getElementById("appBox").classList.add("hidden"); }
-        });
     </script>
 </head>
 <body class="bg-green-50 p-4">
-  <div class="max-w-md mx-auto bg-white rounded-3xl p-6 shadow-xl">
-    <div id="loginBox">
-        <h2 class="text-xl font-bold mb-4 text-green-700">EcoScan - Login</h2>
+    <div id="loginBox" class="max-w-md mx-auto bg-white rounded-3xl p-6 shadow-xl">
+        <h2 class="text-xl font-bold mb-4 text-green-700 text-center">EcoScan - Login</h2>
         <input id="email" type="email" placeholder="E-mail" class="w-full p-3 border rounded-xl mb-2">
         <input id="senha" type="password" placeholder="Senha" class="w-full p-3 border rounded-xl mb-4">
         <button onclick="login()" class="w-full bg-green-600 text-white p-3 rounded-xl font-bold">Entrar</button>
     </div>
-    <div id="appBox" class="hidden">
+
+    <div id="appBox" class="hidden max-w-md mx-auto bg-white rounded-3xl p-6 shadow-xl">
         <div class="flex gap-2 mb-4">
-            <button onclick="mudarAba('scan')" class="flex-1 bg-green-600 text-white py-2 rounded-lg font-bold">Scanner</button>
-            <button onclick="mudarAba('chat')" class="flex-1 bg-slate-200 py-2 rounded-lg font-bold">Mural</button>
+            <button onclick="mudarAba('scan')" class="flex-1 bg-green-600 text-white py-2 rounded-lg font-bold text-sm">Scanner</button>
+            <button onclick="mudarAba('chat')" class="flex-1 bg-slate-200 py-2 rounded-lg font-bold text-sm">Mural</button>
         </div>
+        
         <div id="scan" class="aba">
             <video id="cameraFeed" autoplay playsinline class="w-full h-64 bg-black rounded-2xl object-cover mb-4"></video>
             <div class="grid grid-cols-2 gap-2">
-                <button onclick="ligarCamera()" class="bg-slate-800 text-white py-3 rounded-xl font-bold">Ligar Câmera</button>
-                <button onclick="scanearObjeto()" class="bg-amber-500 text-white py-3 rounded-xl font-bold">Analisar</button>
+                <button onclick="ligarCamera()" class="bg-slate-800 text-white py-3 rounded-xl font-bold text-xs">Ligar Câmera</button>
+                <button onclick="scanearObjeto()" class="bg-amber-500 text-white py-3 rounded-xl font-bold text-xs">Analisar</button>
             </div>
             <div id="resultadoScan" class="mt-4 hidden"></div>
         </div>
-        <div id="chat" class="aba hidden text-center py-10">Mural em breve...</div>
+        
+        <div id="chat" class="aba hidden text-center py-10 text-slate-500">Mural de mensagens em breve...</div>
         <button onclick="logout()" class="w-full mt-6 text-red-500 text-xs underline">Sair</button>
     </div>
-  </div>
 </body>
 </html>
