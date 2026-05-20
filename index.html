@@ -22,6 +22,149 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const EMAIL_ADMIN = "tais.paz@live.com";
+const URL_MODELO = "https://teachablemachine.withgoogle.com/models/HqIiv8XU6/";
+let model, maxPredictions;
+
+async function carregarIA() {
+  try {
+    const modelURL = URL_MODELO + "model.json";
+    const metadataURL = URL_MODELO + "metadata.json";
+    model = await tmImage.load(modelURL, metadataURL);
+    maxPredictions = model.getTotalClasses();
+  } catch (e) { console.error("Erro IA:", e); }
+}
+carregarIA();
+
+// --- DICIONÁRIO DE SINÔNIMOS ---
+const sinonimos = {
+  "organico": "comida", "fruta": "comida", "vegetal": "comida", "resto": "comida",
+  "papel": "papelao", "caderno": "papelao", "caixa": "papelao",
+  "garrafa": "plastico", "embalagem": "plastico",
+  "pote": "vidro", "copo": "vidro",
+  "lata": "aluminio", "metal": "aluminio"
+};
+
+const dadosReciclagem = {
+  "comida": { 
+      nome: "Resíduo Orgânico 🌱", 
+      tipo: "Lixeira Marrom 🟤", 
+      dica: "Perfeito para compostagem! Cascas de frutas, restos de legumes e borra de café viram um excelente adubo." 
+  },
+  "papelao": { nome: "Papelão / Papel ♻️", tipo: "Lixeira Azul 🔵", dica: "Dobre para economizar espaço e coloque na lixeira azul." },
+  "plastico": { nome: "Plástico ♻️", tipo: "Lixeira Vermelha 🔴", dica: "Lave para retirar restos de comida." },
+  "vidro": { nome: "Vidro ♻️", tipo: "Lixeira Verde 🟢", dica: "Cuidado com vidros quebrados, embale-os bem." },
+  "aluminio": { nome: "Alumínio ♻️", tipo: "Lixeira Amarela 🟡", dica: "Amasse bem as latinhas." }
+};
+
+/* --- CÂMERA E SCANNER --- */
+let streamAtual = null;
+
+window.abrirCamera = async () => {
+  const video = document.getElementById("cameraFeed");
+  const placeholder = document.getElementById("cameraPlaceholder");
+  try {
+    streamAtual = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    video.srcObject = streamAtual;
+    video.classList.remove("hidden");
+    placeholder.classList.add("hidden");
+  } catch (err) { alert("Permita o acesso à câmera."); }
+};
+
+window.scanearObjeto = async () => {
+  const resultado = document.getElementById("resultadoScan");
+  resultado.classList.remove("hidden");
+  resultado.innerHTML = "Analisando...";
+  
+  const prediction = await model.predict(document.getElementById("cameraFeed"));
+  let maiorClasse = prediction.sort((a,b) => b.probability - a.probability)[0].className.toLowerCase();
+  
+  // Aplica Sinônimos
+  Object.keys(sinonimos).forEach(sin => { if(maiorClasse.includes(sin)) maiorClasse = sinonimos[sin]; });
+  
+  const dados = dadosReciclagem[maiorClasse] || { nome: maiorClasse, tipo: "Reciclável", dica: "Descarte corretamente." };
+  
+  resultado.innerHTML = `
+    <div class="p-5 bg-white border-l-4 border-green-500 shadow-sm mt-3 rounded-xl">
+        <h4 class="font-bold text-slate-800">${dados.nome}</h4>
+        <p class="text-green-600 font-bold text-xs">${dados.tipo}</p>
+        <p class="text-sm text-slate-600 mt-2">${dados.dica}</p>
+    </div>`;
+};
+
+/* --- LOGINS E NAVEGAÇÃO --- */
+window.login = async () => { try { await signInWithEmailAndPassword(auth, document.getElementById("email").value, document.getElementById("senha").value); } catch(err){ alert("Erro no login"); }};
+window.logout = async () => { await signOut(auth); };
+window.mudarAba = (nome) => {
+  document.querySelectorAll(".aba-conteudo").forEach(el => el.classList.add("hidden"));
+  document.getElementById(`aba-${nome}`).classList.remove("hidden");
+};
+onAuthStateChanged(auth, (u) => {
+  if (u) { document.getElementById("loginBox").classList.add("hidden"); document.getElementById("appBox").classList.remove("hidden"); }
+  else { document.getElementById("loginBox").classList.remove("hidden"); document.getElementById("appBox").classList.add("hidden"); }
+});
+</script>
+
+<style>
+.scan-frame { position: relative; width: 100%; height: 320px; border-radius: 20px; overflow: hidden; background: #000; margin: 15px 0; }
+</style>
+</head>
+
+<body class="p-4 bg-green-50">
+<div class="w-full max-w-lg mx-auto bg-white rounded-3xl p-6 shadow-xl">
+    
+    <div id="loginBox" class="space-y-4">
+      <h3 class="font-bold text-center mb-4">Acesse o EcoScan</h3>
+      <input id="email" type="email" placeholder="E-mail" class="w-full p-3 border rounded-xl" />
+      <input id="senha" type="password" placeholder="Senha" class="w-full p-3 border rounded-xl" />
+      <button onclick="login()" class="w-full bg-green-600 text-white p-3 rounded-xl font-bold">Entrar</button>
+    </div>
+
+    <div id="appBox" class="hidden space-y-4">
+      <div class="flex gap-2">
+        <button onclick="mudarAba('escanear')" class="bg-green-600 text-white flex-1 py-2 rounded-lg text-sm font-bold">Scanner</button>
+        <button onclick="mudarAba('chat')" class="bg-slate-200 flex-1 py-2 rounded-lg text-sm font-bold">Mural</button>
+      </div>
+      
+      <div id="aba-escanear" class="aba-conteudo">
+        <div class="scan-frame">
+          <video id="cameraFeed" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
+          <div id="cameraPlaceholder" class="absolute inset-0 bg-black flex items-center justify-center text-white text-xs">Câmera desativada</div>
+        </div>
+        <button onclick="abrirCamera()" class="w-full bg-slate-800 text-white py-3 rounded-xl text-sm font-bold">Ligar Câmera</button>
+        <button onclick="scanearObjeto()" class="w-full bg-amber-500 text-white py-3 rounded-xl text-sm font-bold mt-2">Analisar</button>
+        <div id="resultadoScan"></div>
+      </div>
+      
+      <div id="aba-chat" class="aba-conteudo hidden text-center p-10 text-slate-400">Mural em breve...</div>
+      <button onclick="logout()" class="text-red-500 text-xs underline">Sair</button>
+    </div>
+</div>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>EcoScan - Inteligência Ambiental</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = { apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw", authDomain: "ecoscan-96a80.firebaseapp.com", projectId: "ecoscan-96a80", storageBucket: "ecoscan-96a80.appspot.com", messagingSenderId: "532877468700", appId: "1:532877468700:web:689d25217275313341abd9", measurementId: "G-ZN2B54CN07" };
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const EMAIL_ADMIN = "tais.paz@live.com";
 
 // LINK DO SEU MODELO EXCLUSIVO DO TEACHABLE MACHINE
 const URL_MODELO = "https://teachablemachine.withgoogle.com/models/HqIiv8XU6/";
@@ -336,5 +479,4 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
 </div>
 </body>
 </html>
-
 
