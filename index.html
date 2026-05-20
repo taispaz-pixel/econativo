@@ -7,7 +7,6 @@
 
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
@@ -27,13 +26,15 @@ let model, maxPredictions;
 
 async function carregarIA() {
   try {
-    model = await tmImage.load(URL_MODELO + "model.json", URL_MODELO + "metadata.json");
+    const modelURL = URL_MODELO + "model.json";
+    const metadataURL = URL_MODELO + "metadata.json";
+    model = await tmImage.load(modelURL, metadataURL);
     maxPredictions = model.getTotalClasses();
   } catch (e) { console.error("Erro IA:", e); }
 }
 carregarIA();
 
-// --- ATUALIZAÇÃO: DICIONÁRIO DE SINÔNIMOS ---
+// --- ACréSCIMO: DICIONÁRIO DE SINÔNIMOS ---
 const dicionario = {
   "organico": "comida", "fruta": "comida", "vegetal": "comida", "resto": "comida",
   "papel": "papelao", "caderno": "papelao", "caixa": "papelao",
@@ -54,73 +55,31 @@ const dadosReciclagem = {
   "aluminio": { nome: "Alumínio ♻️", tipo: "Lixeira Amarela 🟡", dica: "Amasse bem as latinhas para facilitar a reciclagem." }
 };
 
+// --- MANTENDO SUAS FUNÇÕES ORIGINAIS DE SCANNER COM O DICIONÁRIO ---
 window.scanearObjeto = async () => {
   if (!model) return;
+  const video = document.getElementById("cameraFeed");
   const resultado = document.getElementById("resultadoScan");
   resultado.classList.remove("hidden");
   
-  const prediction = await model.predict(document.getElementById("cameraFeed"));
-  let maiorClasse = prediction.sort((a,b) => b.probability - a.probability)[0].className.toLowerCase();
+  const prediction = await model.predict(video);
+  let maiorClasse = prediction.sort((a,b) => b.probability - a.probability)[0].className.toLowerCase().trim();
   
-  // Lógica do dicionário
+  // Aplica o Dicionário
   Object.keys(dicionario).forEach(key => { if(maiorClasse.includes(key)) maiorClasse = dicionario[key]; });
 
   const dados = dadosReciclagem[maiorClasse] || { nome: maiorClasse, tipo: "Reciclável", dica: "Descarte corretamente." };
   
   resultado.innerHTML = `
-    <div class="p-5 bg-slate-50 border-l-4 border-green-500 shadow-sm mt-3 rounded-xl animate-fade-in">
+    <div class="p-5 bg-white border-l-4 border-green-500 shadow-sm mt-3 rounded-xl">
         <h4 class="font-bold text-slate-800">${dados.nome}</h4>
-        <span class="text-xs font-bold text-green-600">${dados.tipo}</span>
+        <p class="text-green-600 font-bold text-xs">${dados.tipo}</p>
         <p class="text-sm text-slate-600 mt-2">${dados.dica}</p>
     </div>`;
     document.getElementById("xpUsuario").innerText = parseInt(document.getElementById("xpUsuario").innerText) + 50;
 };
 
-// ... (Restante do seu código: Login, Mural, Navegação)
-window.login = async () => { try { await signInWithEmailAndPassword(auth, document.getElementById("email").value, document.getElementById("senha").value); } catch(err){ alert("Erro no login"); }};
-window.logout = async () => { await signOut(auth); };
-window.mudarAba = (nome) => {
-  document.querySelectorAll(".aba-conteudo").forEach(el => el.classList.add("hidden"));
-  document.getElementById(`aba-${nome}`).classList.remove("hidden");
-  if(nome === "escanear") abrirCamera();
-};
-window.abrirCamera = async () => {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        document.getElementById("cameraFeed").srcObject = stream;
-        document.getElementById("cameraFeed").classList.remove("hidden");
-    } catch(err) { alert("Permita a câmera"); }
-};
+// (Aqui você mantém o restante do seu código original de login, mural, etc...)
 </script>
 
-<style>
-.scan-frame { position: relative; width: 100%; height: 320px; border-radius: 20px; overflow: hidden; background: #000; margin: 15px 0; }
-</style>
-</head>
-
-<body class="p-4 bg-green-50">
-<div class="w-full max-w-lg mx-auto bg-white rounded-3xl p-6 shadow-xl">
-    <div id="loginBox">
-        <h3 class="font-bold text-center mb-4">Acesse o EcoScan</h3>
-        <input id="email" type="email" placeholder="E-mail" class="w-full p-3 border rounded-xl mb-2" />
-        <input id="senha" type="password" placeholder="Senha" class="w-full p-3 border rounded-xl mb-4" />
-        <button onclick="login()" class="w-full bg-green-600 text-white p-3 rounded-xl font-bold">Entrar</button>
-    </div>
-    <div id="appBox" class="hidden">
-        <div class="flex gap-2 mb-4">
-            <button onclick="mudarAba('escanear')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold">Scanner</button>
-            <button onclick="mudarAba('chat')" class="bg-slate-200 px-4 py-2 rounded-lg text-xs font-bold">Mural</button>
-        </div>
-        <div id="aba-escanear" class="aba-conteudo">
-            <div class="scan-frame">
-                <video id="cameraFeed" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
-            </div>
-            <button onclick="abrirCamera()" class="w-full bg-slate-800 text-white py-3 rounded-xl text-sm font-bold">Ligar Câmera</button>
-            <button onclick="scanearObjeto()" class="w-full bg-amber-500 text-white py-3 rounded-xl text-sm font-bold mt-2">Analisar</button>
-            <div id="resultadoScan"></div>
-        </div>
-        <div id="aba-chat" class="aba-conteudo hidden text-center text-slate-500">Mural em breve...</div>
-    </div>
-</div>
-</body>
-</html>
+  
