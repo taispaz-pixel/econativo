@@ -1,89 +1,87 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>EcoScan - Inteligência Ambiental</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <title>EcoScan - Inteligência Ambiental</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        const firebaseConfig = { apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw", authDomain: "ecoscan-96a80.firebaseapp.com", projectId: "ecoscan-96a80", storageBucket: "ecoscan-96a80.appspot.com", messagingSenderId: "532877468700", appId: "1:532877468700:web:689d25217275313341abd9", measurementId: "G-ZN2B54CN07" };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
 
-const firebaseConfig = { apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw", authDomain: "ecoscan-96a80.firebaseapp.com", projectId: "ecoscan-96a80", storageBucket: "ecoscan-96a80.appspot.com", messagingSenderId: "532877468700", appId: "1:532877468700:web:689d25217275313341abd9", measurementId: "G-ZN2B54CN07" };
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+        const URL_MODELO = "https://teachablemachine.withgoogle.com/models/v8VnlJGQG/";
+        let model;
 
-const URL_MODELO = "https://teachablemachine.withgoogle.com/models/v8VnlJGQG/";
-let model;
+        async function carregarIA() {
+            try {
+                model = await tmImage.load(URL_MODELO + "model.json", URL_MODELO + "metadata.json");
+            } catch (e) { console.error("Erro IA:", e); }
+        }
+        carregarIA();
 
-async function carregarIA() {
-  try {
-    model = await tmImage.load(URL_MODELO + "model.json", URL_MODELO + "metadata.json");
-  } catch (e) { console.error("Erro IA:", e); }
-}
-carregarIA();
+        window.login = async () => { 
+            try { await signInWithEmailAndPassword(auth, document.getElementById("email").value, document.getElementById("senha").value); } 
+            catch(e) { alert("Erro ao entrar: " + e.message); } 
+        };
+        window.logout = async () => await signOut(auth);
 
-window.login = async () => { try { await signInWithEmailAndPassword(auth, document.getElementById("email").value, document.getElementById("senha").value); } catch(e) { alert("Erro ao entrar"); } };
-window.logout = async () => await signOut(auth);
+        window.ligarCamera = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                document.getElementById("cameraFeed").srcObject = stream;
+            } catch(e) { alert("Erro na câmera: " + e.message); }
+        };
 
-window.ligarCamera = async () => {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        document.getElementById("cameraFeed").srcObject = stream;
-    } catch(e) { alert("Erro na câmera."); }
-};
+        window.scanearObjeto = async () => {
+            const res = document.getElementById("resultadoScan");
+            if (!model) return;
+            res.classList.remove("hidden");
+            res.innerHTML = "Analisando...";
+            const pred = await model.predict(document.getElementById("cameraFeed"));
+            let m = pred.sort((a,b) => b.probability - a.probability)[0];
+            res.innerHTML = `<div class="bg-white p-3 rounded-lg border font-bold">${m.className} (${(m.probability*100).toFixed(0)}%)</div>`;
+        };
 
-window.scanearObjeto = async () => {
-    const res = document.getElementById("resultadoScan");
-    if (!model) return;
-    res.classList.remove("hidden");
-    res.innerHTML = `<p class="p-4 text-center text-sm">Analisando...</p>`;
-    const pred = await model.predict(document.getElementById("cameraFeed"));
-    let m = pred.sort((a,b) => b.probability - a.probability)[0];
-    res.innerHTML = `<div class="p-4 bg-white mt-2 rounded-xl border-l-4 border-green-500 font-bold">${m.className} (${(m.probability*100).toFixed(0)}%)</div>`;
-};
+        window.mudarAba = (id) => {
+            document.querySelectorAll('.aba').forEach(a => a.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        };
 
-window.mudarAba = (id) => {
-    document.querySelectorAll('.aba').forEach(a => a.classList.add('hidden'));
-    document.getElementById(id).classList.remove('hidden');
-};
-
-onAuthStateChanged(auth, (u) => {
-    if(u) { document.getElementById("loginBox").classList.add("hidden"); document.getElementById("appBox").classList.remove("hidden"); }
-    else { document.getElementById("loginBox").classList.remove("hidden"); document.getElementById("appBox").classList.add("hidden"); }
-});
-</script>
+        onAuthStateChanged(auth, (u) => {
+            if(u) { document.getElementById("loginBox").classList.add("hidden"); document.getElementById("appBox").classList.remove("hidden"); }
+            else { document.getElementById("loginBox").classList.remove("hidden"); document.getElementById("appBox").classList.add("hidden"); }
+        });
+    </script>
 </head>
 <body class="bg-green-50 p-4">
-  <div class="max-w-lg mx-auto bg-white rounded-3xl p-6 shadow-xl">
+  <div class="max-w-md mx-auto bg-white rounded-3xl p-6 shadow-xl">
     <div id="loginBox">
         <h2 class="text-xl font-bold mb-4 text-green-700">EcoScan - Login</h2>
         <input id="email" type="email" placeholder="E-mail" class="w-full p-3 border rounded-xl mb-2">
         <input id="senha" type="password" placeholder="Senha" class="w-full p-3 border rounded-xl mb-4">
         <button onclick="login()" class="w-full bg-green-600 text-white p-3 rounded-xl font-bold">Entrar</button>
     </div>
-
     <div id="appBox" class="hidden">
         <div class="flex gap-2 mb-4">
-            <button onclick="mudarAba('scan')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold">Scanner</button>
-            <button onclick="mudarAba('chat')" class="bg-slate-200 px-4 py-2 rounded-lg text-sm font-bold">Mural</button>
+            <button onclick="mudarAba('scan')" class="flex-1 bg-green-600 text-white py-2 rounded-lg font-bold">Scanner</button>
+            <button onclick="mudarAba('chat')" class="flex-1 bg-slate-200 py-2 rounded-lg font-bold">Mural</button>
         </div>
-        
         <div id="scan" class="aba">
-            <video id="cameraFeed" autoplay playsinline class="w-full h-64 bg-black rounded-2xl object-cover"></video>
-            <div class="grid grid-cols-2 gap-2 mt-2">
-                <button onclick="ligarCamera()" class="bg-slate-800 text-white py-4 rounded-xl font-bold text-xs">Ligar Câmera</button>
-                <button onclick="scanearObjeto()" class="bg-amber-500 text-white py-4 rounded-xl font-bold text-xs">Analisar</button>
+            <video id="cameraFeed" autoplay playsinline class="w-full h-64 bg-black rounded-2xl object-cover mb-4"></video>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="ligarCamera()" class="bg-slate-800 text-white py-3 rounded-xl font-bold">Ligar Câmera</button>
+                <button onclick="scanearObjeto()" class="bg-amber-500 text-white py-3 rounded-xl font-bold">Analisar</button>
             </div>
-            <div id="resultadoScan" class="hidden"></div>
+            <div id="resultadoScan" class="mt-4 hidden"></div>
         </div>
-        
-        <div id="chat" class="aba hidden text-slate-500">Mural de mensagens em breve...</div>
-        <button onclick="logout()" class="text-red-500 text-xs mt-4 underline">Sair</button>
+        <div id="chat" class="aba hidden text-center py-10">Mural em breve...</div>
+        <button onclick="logout()" class="w-full mt-6 text-red-500 text-xs underline">Sair</button>
     </div>
   </div>
 </body>
