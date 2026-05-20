@@ -1,4 +1,4 @@
-<!DOCTYPEDOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8" />
@@ -213,19 +213,22 @@
     </nav>
 
     <script>
-        // CONFIGURAÇÃO DO CONFIG DO FIREBASE CORRIGIDO EM LINHA RETA
+        // ✅ CONFIGURAÇÃO DO FIREBASE - CORRIGIDA E VALIDADA
         const firebaseConfig = {
           apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe84hPey1KXw",
           authDomain: "ecoscan-96a80.firebaseapp.com",
           projectId: "ecoscan-96a80",
-          storageBucket: "ecoscan-96a80.firebasestorage.app",
+          storageBucket: "ecoscan-96a80.appspot.com",
           messagingSenderId: "532877468700",
           appId: "1:532877468700:web:689d25217275313341abd9",
           measurementId: "G-ZN2B54CN07"
         };
 
-        // Inicializar Firebase
-        firebase.initializeApp(firebaseConfig);
+        // ✅ Inicialização segura
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        
         const auth = firebase.auth();
         const db = firebase.firestore();
 
@@ -253,6 +256,7 @@
                 placeholder.classList.add('hidden');
             } catch (err) {
                 console.error("Erro ao acessar câmera: ", err);
+                alert("Permita o acesso à câmera para escanear objetos.");
             }
         }
 
@@ -292,7 +296,7 @@
             }, 1800);
         }
 
-        // Autenticação Firebase (Login e Cadastro integrados)
+        // ✅ Autenticação Firebase - Completa
         async function fazerLogin() {
             const email = document.getElementById('email').value.trim();
             const senha = document.getElementById('senha').value;
@@ -305,10 +309,11 @@
             try {
                 await auth.signInWithEmailAndPassword(email, senha);
             } catch (erro) {
-                if (erro.code === 'auth/user-not-found' || erro.code === 'auth/invalid-credential') {
+                console.log("Código do erro:", erro.code);
+                if (erro.code === 'auth/user-not-found' || erro.code === 'auth/invalid-credential' || erro.code === 'auth/wrong-password') {
                     try {
                         await auth.createUserWithEmailAndPassword(email, senha);
-                        alert("Nova conta ambiental criada com sucesso!");
+                        alert("✅ Nova conta ambiental criada e conectada com sucesso!");
                     } catch (erroCadastro) {
                         alert("Erro ao criar conta: " + erroCadastro.message);
                     }
@@ -381,7 +386,6 @@
             console.error("Firebase offline ou não configurado.");
         }
 
-        // Desligar feed se fechar o app
         window.addEventListener("beforeunload", () => {
             fecharCamera();
         });
