@@ -1,93 +1,122 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EcoScan - Inteligência Ambiental</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>EcoScan - Inteligência Ambiental</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
-        const firebaseConfig = { apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw", authDomain: "ecoscan-96a80.firebaseapp.com", projectId: "ecoscan-96a80", storageBucket: "ecoscan-96a80.appspot.com", messagingSenderId: "532877468700", appId: "1:532877468700:web:689d25217275313341abd9", measurementId: "G-ZN2B54CN07" };
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        const URL = "https://teachablemachine.withgoogle.com/models/v8VnlJGQG/";
-        let model;
+const firebaseConfig = { apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw", authDomain: "ecoscan-96a80.firebaseapp.com", projectId: "ecoscan-96a80", storageBucket: "ecoscan-96a80.appspot.com", messagingSenderId: "532877468700", appId: "1:532877468700:web:689d25217275313341abd9", measurementId: "G-ZN2B54CN07" };
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-        async function init() {
-            model = await tmImage.load(URL + "model.json", URL + "metadata.json");
-        }
-        init();
+// LINK DA SUA IA
+const URL_MODELO = "https://teachablemachine.withgoogle.com/models/HqIiv8XU6/";
+let model;
 
-        window.login = async () => {
-            try {
-                await signInWithEmailAndPassword(auth, document.getElementById("email").value, document.getElementById("senha").value);
-                document.getElementById("loginBox").classList.add("hidden");
-                document.getElementById("appBox").classList.remove("hidden");
-            } catch (e) { alert("Erro ao entrar. Verifique os dados."); }
-        };
+async function carregarIA() {
+  try {
+    model = await tmImage.load(URL_MODELO + "model.json", URL_MODELO + "metadata.json");
+  } catch (e) { console.error("Erro IA:", e); }
+}
+carregarIA();
 
-        window.logout = () => location.reload();
+// Dicionário de Sinônimos e Dicas
+const baseDados = {
+  "comida": { nome: "Resíduo Orgânico", tipo: "Lixeira Marrom 🟤", dica: "Perfeito para compostagem! Alimentos como cascas de frutas, restos de legumes e borra de café viram um adubo incrível para plantas." },
+  "papelao": { nome: "Papelão / Papel", tipo: "Lixeira Azul 🔵", dica: "Dobre para economizar espaço e garantir a reciclagem." },
+  "plastico": { nome: "Plástico", tipo: "Lixeira Vermelha 🔴", dica: "Lave para retirar restos de comida." },
+  "vidro": { nome: "Vidro", tipo: "Lixeira Verde 🟢", dica: "Cuidado ao descartar vidros quebrados!" },
+  "aluminio": { nome: "Alumínio", tipo: "Lixeira Amarela 🟡", dica: "Amasse para reciclar mais." }
+};
 
-        window.ligarCamera = async () => {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            document.getElementById("cameraFeed").srcObject = stream;
-        };
+// Mapeamento de sinônimos para a IA identificar corretamente
+const sinonimos = {
+  "organico": "comida",
+  "fruta": "comida",
+  "vegetal": "comida",
+  "papel": "papelao",
+  "caixa": "papelao",
+  "garrafa": "plastico",
+  "pote": "vidro",
+  "lata": "aluminio"
+};
 
-        window.scanearObjeto = async () => {
-            const res = document.getElementById("resultadoScan");
-            res.classList.remove("hidden");
-            res.innerHTML = "Analisando...";
-            const pred = await model.predict(document.getElementById("cameraFeed"));
-            let m = pred.sort((a,b) => b.probability - a.probability)[0];
-            
-            let dicaExtra = "";
-            if(m.className.toLowerCase().includes("comida")) {
-                dicaExtra = "<br><br><b>Dica:</b> Muitos restos de alimentos servem para compostagem, transformando lixo em adubo rico para plantas!";
-            }
+window.scanearObjeto = async () => {
+    const res = document.getElementById("resultadoScan");
+    res.classList.remove("hidden");
+    res.innerHTML = "Analisando...";
+    
+    const pred = await model.predict(document.getElementById("cameraFeed"));
+    let m = pred.sort((a,b) => b.probability - a.probability)[0];
+    
+    let classeBase = m.className.toLowerCase();
+    // Verifica dicionário de sinônimos
+    Object.keys(sinonimos).forEach(sin => {
+        if(classeBase.includes(sin)) classeBase = sinonimos[sin];
+    });
 
-            res.innerHTML = `<div class="bg-white p-4 rounded-xl border border-green-200">
-                <p class="font-bold">Item: ${m.className}</p>
-                <p class="text-sm">Precisão: ${(m.probability*100).toFixed(0)}%</p>
-                ${dicaExtra}
-            </div>`;
-        };
+    const info = baseDados[classeBase] || { nome: m.className, tipo: "Reciclável", dica: "Descarte com consciência." };
+    
+    res.innerHTML = `<div class="p-4 bg-white mt-2 rounded-xl border-l-4 border-green-500 shadow-lg">
+        <p class="font-bold text-green-700">${info.nome}</p>
+        <p class="text-xs text-slate-500">${info.tipo}</p>
+        <p class="text-xs mt-2 italic">${info.dica}</p>
+    </div>`;
+};
 
-        window.mudarAba = (id) => {
-            document.querySelectorAll('.aba').forEach(a => a.classList.add('hidden'));
-            document.getElementById(id).classList.remove('hidden');
-        };
-    </script>
+// Funções de sistema mantidas
+window.abrirCamera = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    document.getElementById("cameraFeed").srcObject = stream;
+};
+window.login = async () => { try { await signInWithEmailAndPassword(auth, document.getElementById("email").value, document.getElementById("senha").value); } catch(e) { alert("Erro login"); } };
+window.logout = async () => await signOut(auth);
+window.mudarAba = (id) => {
+    document.querySelectorAll('.aba-conteudo').forEach(a => a.classList.add('hidden'));
+    document.getElementById('aba-' + id).classList.remove('hidden');
+};
+
+onAuthStateChanged(auth, (u) => {
+    if(u) { document.getElementById("loginBox").classList.add("hidden"); document.getElementById("appBox").classList.remove("hidden"); document.getElementById("usuario").innerText = u.email; }
+    else { document.getElementById("loginBox").classList.remove("hidden"); document.getElementById("appBox").classList.add("hidden"); }
+});
+</script>
 </head>
 <body class="bg-green-50 p-4">
-    <div id="loginBox" class="max-w-md mx-auto bg-white rounded-3xl p-6 shadow-xl">
-        <h2 class="text-xl font-bold mb-4 text-green-700 text-center">EcoScan - Login</h2>
+  <div class="max-w-lg mx-auto bg-white rounded-3xl p-6 shadow-xl">
+    <div id="loginBox">
+        <h2 class="text-xl font-bold mb-4 text-green-700">EcoScan - Login</h2>
         <input id="email" type="email" placeholder="E-mail" class="w-full p-3 border rounded-xl mb-2">
         <input id="senha" type="password" placeholder="Senha" class="w-full p-3 border rounded-xl mb-4">
         <button onclick="login()" class="w-full bg-green-600 text-white p-3 rounded-xl font-bold">Entrar</button>
     </div>
 
-    <div id="appBox" class="hidden max-w-md mx-auto bg-white rounded-3xl p-6 shadow-xl">
+    <div id="appBox" class="hidden">
         <div class="flex gap-2 mb-4">
-            <button onclick="mudarAba('scan')" class="flex-1 bg-green-600 text-white py-2 rounded-lg font-bold text-sm">Scanner</button>
-            <button onclick="mudarAba('chat')" class="flex-1 bg-slate-200 py-2 rounded-lg font-bold text-sm">Mural</button>
+            <button onclick="mudarAba('escanear')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold">Scanner</button>
+            <button onclick="mudarAba('chat')" class="bg-slate-200 px-4 py-2 rounded-lg text-sm font-bold">Mural</button>
         </div>
         
-        <div id="scan" class="aba">
-            <video id="cameraFeed" autoplay playsinline class="w-full h-64 bg-black rounded-2xl object-cover mb-4"></video>
-            <div class="grid grid-cols-2 gap-2">
-                <button onclick="ligarCamera()" class="bg-slate-800 text-white py-3 rounded-xl font-bold text-xs">Ligar Câmera</button>
-                <button onclick="scanearObjeto()" class="bg-amber-500 text-white py-3 rounded-xl font-bold text-xs">Analisar</button>
-            </div>
-            <div id="resultadoScan" class="mt-4 hidden"></div>
+        <div id="aba-escanear" class="aba-conteudo">
+            <video id="cameraFeed" autoplay playsinline class="w-full h-64 bg-black rounded-2xl object-cover"></video>
+            <button onclick="abrirCamera()" class="w-full bg-slate-800 text-white py-4 rounded-xl mt-2 font-bold text-xs">Ligar Câmera</button>
+            <button onclick="scanearObjeto()" class="w-full bg-amber-500 text-white py-4 rounded-xl mt-2 font-bold text-xs">Analisar</button>
+            <div id="resultadoScan" class="hidden"></div>
         </div>
         
-        <div id="chat" class="aba hidden text-center py-10 text-slate-500">Mural de mensagens em breve...</div>
-        <button onclick="logout()" class="w-full mt-6 text-red-500 text-xs underline">Sair</button>
+        <div id="aba-chat" class="aba-conteudo hidden text-slate-500">Mural de mensagens em breve...</div>
+        <button onclick="logout()" class="text-red-500 text-xs mt-4 underline">Sair</button>
     </div>
+  </div>
 </body>
 </html>
