@@ -9,6 +9,9 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+
 <script type="module">
 /* =========================
    FIREBASE IMPORTS
@@ -25,6 +28,8 @@ import {
   getFirestore,
   collection,
   addDoc,
+  deleteDoc,
+  doc,
   query,
   orderBy,
   onSnapshot,
@@ -32,7 +37,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* =========================
-   FIREBASE CONFIG - 100% CORRIGIDA
+   FIREBASE CONFIG
 ========================= */
 const firebaseConfig = {
   apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw",
@@ -45,14 +50,34 @@ const firebaseConfig = {
 };
 
 /* =========================
-   INICIAR FIREBASE
+   INICIAR SISTEMAS
 ========================= */
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+let modeloIA = null;
+const EMAIL_ADMIN = "tais.paz@live.com";
+
+// Carregar o modelo de IA assim que a página abrir
+async function carregarModeloIA() {
+  try {
+    modeloIA = await mobilenet.load();
+    console.log("Modelo de IA carregado com sucesso!");
+  } catch (error) {
+    console.error("Erro ao carregar modelo de IA:", error);
+  }
+}
+carregarModeloIA();
+
+// Lista básica de termos proibidos para moderação automática
+const termosProibidos = [
+  "macaco", "macaca", "viado", "viadinho", "tição", "crioulo", "negão", "sapatão", "traveco",
+  "bicha", "puta", "caralho", "porra", "arrombado", "fudge", "racista", "homofobico"
+];
+
 /* =========================
-   LOGIN
+   LOGIN & CADASTRO
 ========================= */
 window.login = async () => {
   const email = document.getElementById("email").value.trim();
@@ -78,9 +103,6 @@ window.login = async () => {
   }
 };
 
-/* =========================
-   CADASTRO
-========================= */
 window.registrar = async () => {
   const email = document.getElementById("email").value.trim();
   const senha = document.getElementById("senha").value;
@@ -103,23 +125,17 @@ window.registrar = async () => {
     switch(error.code) {
       case 'auth/email-already-in-use': mensagem = "E-mail já cadastrado"; break;
       case 'auth/invalid-email': mensagem = "E-mail inválido"; break;
-      default: message += error.message;
+      default: mensagem += error.message;
     }
     mostrarAviso(mensagem, "erro");
   }
 };
 
-/* =========================
-   LOGOUT
-========================= */
 window.logout = async () => {
   await signOut(auth);
   mostrarAviso("Você saiu da conta", "info");
 };
 
-/* =========================
-   VERIFICAR LOGIN
-========================= */
 onAuthStateChanged(auth, (user) => {
   if (user) {
     document.getElementById("loginBox").classList.add("hidden");
@@ -134,7 +150,7 @@ onAuthStateChanged(auth, (user) => {
 });
 
 /* =========================
-   SISTEMA DE CÂMERA E SCAN
+   CÂMERA E INTELIGÊNCIA ARTIFICIAL
 ========================= */
 let streamAtual = null;
 
@@ -164,38 +180,96 @@ window.pararCamera = () => {
   }
 };
 
-const bancoObjetos = [
-  { nome: "Garrafa PET", tipo: "Plástico ♻️", cor: "red", dica: "Lave bem antes de descartar. Descarte na lixeira vermelha." },
-  { nome: "Lata de Alumínio", tipo: "Metal ♻️", cor: "amber", dica: "Amasse para economizar espaço. Descarte na lixeira amarela." },
-  { nome: "Caixa de Papelão", tipo: "Papel ♻️", cor: "blue", dica: "Desmonte e dobre, retire fitas. Descarte na lixeira azul." },
-  { nome: "Pote de Vidro", tipo: "Vidro ♻️", cor: "green", dica: "Retire tampas e rótulos. Descarte na lixeira verde." },
-  { nome: "Embalagem Longa Vida", tipo: "Material Híbrido", cor: "orange", dica: "Lave e seque. Descarte na lixeira laranja." },
-  { nome: "Casca de Fruta", tipo: "Resíduo Orgânico 🌱", cor: "stone", dica: "Ideal para compostagem. Descarte na lixeira marrom." }
+// Dicionário inteligente para mapear o que a IA vê para as regras de descarte do Brasil
+const mapeamentoReciclagem = {
+  "bottle": { nome: "Garrafa Plástica / Vidro", tipo: "Plástico ou Vidro ♻️", dica: "Lave bem antes de descartar. Se for plástico vai na lixeira vermelha, se for vidro vai na verde." },
+  "box": { nome: "Embalagem de Papelão / Caixa", tipo: "Papel e Papelão ♻️", dica: "Desmonte a caixa, retire fitas plásticas e descarte na lixeira azul (Papel)." },
+  "carton": { nome: "Caixa de Papelão / Sucrilhos / Leite", tipo: "Papel e Papelão ♻️", dica: "Excelente! Remova resíduos internos, dobre para economizar espaço e jogue na lixeira azul." },
+  "can": { nome: "Lata de Alumínio / Metal", tipo: "Metal ♻️", dica: "Amasse para economizar espaço no transporte. Descarte na lixeira amarela." },
+  "cup": { nome: "Copo / Recipiente", tipo: "Resíduo Descartável ♻️", dica: "Se for plástico limpo, lixeira vermelha. Se estiver muito sujo de comida, jogue no lixo orgânico." },
+  "packet": { nome: "Embalagem Plástica / Pacote", tipo: "Plástico ♻️", dica: "Retire todo o conteúdo de dentro. Descarte na lixeira vermelha." },
+  "food": { nome: "Resíduo de Alimento / Fruta", tipo: "Orgânico 🌱", dica: "Perfeito para compostagem caseira! Caso contrário, descarte na lixeira marrom." }
+};
+
+const mensagensAgradecimento = [
+  "O planeta agradece imensamente o seu cuidado! Cada pequeno descarte correto constrói um futuro mais limpo. 🌱",
+  "Parabéns pela atitude sustentável! Você está ajudando a reduzir o lixo acumulado no mundo. 🌍✨",
+  "Excelente trabalho! Reciclar protege a nossa biodiversidade e economiza recursos naturais valiosos. 🌲",
+  "Atitude exemplar! O EcoScan se orgulha de ter você na nossa comunidade verde. 🎉"
 ];
 
-window.scanearObjeto = () => {
+window.scanearObjeto = async () => {
   const resultado = document.getElementById("resultadoScan");
   resultado.classList.remove("hidden");
   resultado.innerHTML = `
     <div class="text-center py-6">
-      <i class="fa-solid fa-magnifying-glass text-4xl text-green-600 mb-3 animate-spin"></i>
-      <p class="font-semibold text-slate-700">Analisando imagem...</p>
+      <i class="fa-solid fa-circle-notch text-4xl text-green-600 mb-3 animate-spin"></i>
+      <p class="font-semibold text-slate-700 text-sm">IA processando imagem em tempo real...</p>
     </div>
   `;
 
-  setTimeout(() => {
-    const objeto = bancoObjetos[Math.floor(Math.random() * bancoObjetos.length)];
-    
+  if (!modeloIA) {
+    setTimeout(() => { mostrarAviso("Aguarde a IA inicializar mais alguns segundos...", "info"); }, 500);
+  }
+
+  const video = document.getElementById("cameraFeed");
+  
+  try {
+    let objetoIdentificado = null;
+    let dadosReciclagem = { nome: "Objeto Não Identificado", tipo: "Análise Genérica", dica: "Tente aproximar mais o objeto da câmera sob boa iluminação. Na dúvida, separe os materiais secos dos úmidos." };
+
+    // Se a câmera real estiver ativa, roda a IA sobre o frame do vídeo
+    if (streamAtual && modeloIA) {
+      const predicoes = await modeloIA.classify(video);
+      if (predicoes && predicoes.length > 0) {
+        // Pega o termo em inglês que a IA detectou
+        const classeDetectada = predicoes[0].className.toLowerCase();
+        
+        // Procura no nosso dicionário se bate com alguma regra nossa
+        for (const chave in mapeamentoReciclagem) {
+          if (classeDetectada.includes(chave)) {
+            objetoIdentificado = chave;
+            dadosReciclagem = mapeamentoReciclagem[chave];
+            break;
+          }
+        }
+        
+        // Se a IA achar algo que não mapeamos, monta uma resposta dinâmica inteligente
+        if (!objetoIdentificado) {
+          dadosReciclagem.nome = predicoes[0].className.split(',')[0];
+          dadosReciclagem.tipo = "Análise por IA";
+          dadosReciclagem.dica = "Certifique-se de limpar a embalagem. Separe plásticos, papéis e metais nas suas respectivas lixeiras coloridas.";
+        }
+      }
+    } else {
+      // Fallback simulador caso a câmera esteja desligada na hora do clique
+      const chaves = Object.keys(mapeamentoReciclagem);
+      dadosReciclagem = mapeamentoReciclagem[chaves[Math.floor(Math.random() * chaves.length)]];
+    }
+
+    // Escolhe uma mensagem linda de agradecimento aleatória
+    const agradecimento = mensagensAgradecimento[Math.floor(Math.random() * mensagensAgradecimento.length)];
+
     resultado.innerHTML = `
-      <div class="p-5 rounded-xl bg-slate-50 border-l-4 border-green-500 shadow-sm mt-3">
-        <div class="flex items-center gap-3 mb-2">
-          <span class="text-2xl">♻️</span>
+      <div class="space-y-3 mt-3 animate-fade-in">
+        <div class="p-5 rounded-xl bg-slate-50 border-l-4 border-green-500 shadow-sm">
+          <div class="flex items-center gap-3 mb-2">
+            <span class="text-2xl">♻️</span>
+            <div>
+              <h4 class="font-bold text-base text-slate-800 capitalize">${dadosReciclagem.nome}</h4>
+              <span class="text-xs font-bold uppercase text-green-600 tracking-wider">${dadosReciclagem.tipo}</span>
+            </div>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed">${dadosReciclagem.dica}</p>
+        </div>
+
+        <div class="p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 shadow-sm text-xs font-medium leading-relaxed flex gap-2 items-start">
+          <span class="text-lg">💖</span>
           <div>
-            <h4 class="font-bold text-base text-slate-800">${objeto.nome}</h4>
-            <span class="text-xs font-bold uppercase text-green-600 tracking-wider">${objeto.tipo}</span>
+            <p class="font-bold mb-0.5">Obrigado por reciclar!</p>
+            <p class="opacity-90">${agradecimento}</p>
           </div>
         </div>
-        <p class="text-sm text-slate-600 leading-relaxed">${objeto.dica}</p>
       </div>
     `;
 
@@ -203,11 +277,14 @@ window.scanearObjeto = () => {
     document.getElementById("xpUsuario").innerText = xpAtual + 50;
     mostrarAviso("+50 Pontos Eco! 🌱", "sucesso");
 
-  }, 2000);
+  } catch (err) {
+    console.error(err);
+    mostrarAviso("Erro ao analisar imagem.", "erro");
+  }
 };
 
 /* =========================
-   SISTEMA DE COMUNIDADE
+   MURAL COMUNIDADE & MODERAÇÃO
 ========================= */
 window.enviarMensagem = async () => {
   const texto = document.getElementById("novaMensagem").value.trim();
@@ -215,6 +292,16 @@ window.enviarMensagem = async () => {
 
   if(!user) { mostrarAviso("Faça login primeiro", "erro"); return; }
   if(!texto) { mostrarAviso("Digite uma mensagem", "erro"); return; }
+
+  // Filtro preventivo automático anti-preconceito e toxicidade
+  const textoMinusculo = texto.toLowerCase();
+  const contemOfensa = termosProibidos.some(termo => textoMinusculo.includes(termo));
+
+  if (contemOfensa) {
+    mostrarAviso("Mensagem bloqueada! Viola as diretrizes de respeito da comunidade. ⚠️", "erro");
+    document.getElementById("novaMensagem").value = "";
+    return;
+  }
 
   try {
     await addDoc(collection(db, "mensagens"), {
@@ -228,23 +315,46 @@ window.enviarMensagem = async () => {
   }
 };
 
+window.deletarMensagem = async (idDocumento) => {
+  if (confirm("Deseja realmente apagar esta mensagem da comunidade?")) {
+    try {
+      await deleteDoc(doc(db, "mensagens", idDocumento));
+      mostrarAviso("Mensagem excluída com sucesso.", "info");
+    } catch (error) {
+      mostrarAviso("Erro ao deletar mensagem.", "erro");
+    }
+  }
+};
+
 function carregarMensagens() {
   const q = query(collection(db, "mensagens"), orderBy("data", "desc"));
   onSnapshot(q, (snapshot) => {
     const lista = document.getElementById("listaMensagens");
     if(!lista) return;
     lista.innerHTML = "";
-    snapshot.forEach(doc => {
-      const msg = doc.data();
+    
+    const usuarioLogado = auth.currentUser ? auth.currentUser.email : "";
+
+    snapshot.forEach(docSnap => {
+      const msg = docSnap.data();
+      const idMsg = docSnap.id;
       const data = msg.data?.toDate() || new Date();
       
+      // Se for você logada (Admin), mostra o botão de apagar
+      const botaoExcluir = (usuarioLogado === EMAIL_ADMIN) 
+        ? `<button onclick="deletarMensagem('${idMsg}')" class="text-red-500 hover:text-red-700 text-[11px] font-bold px-1.5 py-0.5 bg-red-50 rounded border border-red-100"><i class="fa-solid fa-trash"></i> Apagar</button>` 
+        : "";
+      
       lista.innerHTML += `
-        <div class="p-3 bg-slate-50 rounded-xl mb-2 border-l-4 border-green-500 shadow-sm">
-          <div class="flex justify-between items-center mb-1">
+        <div class="p-3 bg-slate-50 rounded-xl mb-2 border-l-4 border-green-500 shadow-sm flex flex-col justify-between">
+          <div class="flex justify-between items-center mb-1 w-full">
             <span class="font-bold text-xs text-green-700">${msg.usuario}</span>
-            <span class="text-[10px] text-slate-400">${data.toLocaleTimeString()}</span>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] text-slate-400">${data.toLocaleTimeString()}</span>
+              ${botaoExcluir}
+            </div>
           </div>
-          <p class="text-sm text-slate-700">${msg.texto}</p>
+          <p class="text-sm text-slate-700 mt-1">${msg.texto}</p>
         </div>
       `;
     });
@@ -282,7 +392,7 @@ window.mudarAba = (nome) => {
 </script>
 
 <style>
-* { -webkit-tap-highlight-color: transparent; }
+* { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
 body{
   margin:0; padding:0; font-family: 'Arial', sans-serif;
   background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); min-height: 100vh;
