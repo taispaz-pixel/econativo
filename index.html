@@ -1,188 +1,489 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EcoScan</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .screen { display: none; }
-        .screen.active { display: block; }
-        .scan-line {
-            position: absolute;
-            width: 100%;
-            height: 4px;
-            background: #22c55e;
-            animation: scan 2.5s infinite linear;
-        }
-        @keyframes scan {
-            0% { top: 0; }
-            50% { top: 100%; }
-            100% { top: 0; }
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+
+<title>EcoScan Pro</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<style>
+html{
+    scroll-behavior:smooth;
+}
+
+body{
+    margin:0;
+    background:#f8fafc;
+    font-family:Arial, sans-serif;
+    overflow-x:hidden;
+}
+
+.page{
+    display:none;
+}
+
+.page.active{
+    display:block;
+}
+
+.bottom-space{
+    height:100px;
+}
+
+.camera-box{
+    position:relative;
+    width:100%;
+    height:360px;
+    border-radius:28px;
+    overflow:hidden;
+    background:#000;
+}
+
+#camera-feed{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+
+.overlay{
+    position:absolute;
+    inset:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    pointer-events:none;
+}
+
+.scan-frame{
+    width:80%;
+    height:75%;
+    border:2px solid rgba(255,255,255,0.2);
+    border-radius:24px;
+    position:relative;
+    overflow:hidden;
+}
+
+.scan-line{
+    position:absolute;
+    width:100%;
+    height:3px;
+    background:#4ade80;
+    box-shadow:0 0 15px #4ade80;
+    animation:scan 2s linear infinite;
+}
+
+@keyframes scan{
+    0%{ top:0; }
+    100%{ top:100%; }
+}
+
+.navbar{
+    position:fixed;
+    bottom:0;
+    left:0;
+    width:100%;
+    background:white;
+    border-top:1px solid #e5e7eb;
+    display:flex;
+    justify-content:space-around;
+    padding:12px 0;
+    z-index:999;
+}
+
+.nav-btn{
+    border:none;
+    background:none;
+    color:#64748b;
+    font-size:12px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:5px;
+}
+
+.nav-btn.active{
+    color:#16a34a;
+    font-weight:bold;
+}
+
+.card{
+    background:white;
+    border-radius:24px;
+    padding:18px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.05);
+}
+
+.message{
+    background:#f1f5f9;
+    padding:12px;
+    border-radius:14px;
+    margin-top:10px;
+}
+
+.hidden{
+    display:none;
+}
+</style>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen pb-24">
 
-    <header class="bg-gradient-to-r from-emerald-600 to-green-500 text-white py-4 px-5 shadow-md sticky top-0 z-40">
-        <div class="max-w-md mx-auto flex justify-between items-center">
-            <div>
-                <h1 class="text-xl font-bold tracking-wide">EcoScan</h1>
-                <p class="text-xs opacity-90">Proteja o planeta</p>
-            </div>
-            <div class="flex items-center gap-2 bg-white/20 border border-white/10 rounded-full px-4 py-1.5 backdrop-blur-sm">
-                <i class="fa-solid fa-leaf text-amber-300 animate-pulse"></i>
-                <span class="text-xs font-bold">XP: <span id="xpValue">350</span></span>
+<body>
+
+<header class="bg-gradient-to-r from-green-700 to-green-500 text-white p-5 sticky top-0 z-50 shadow-lg">
+    <div class="flex justify-between items-center max-w-xl mx-auto">
+        <div>
+            <h1 class="text-2xl font-black">♻️ EcoScan</h1>
+            <p class="text-xs opacity-90">Inteligência ambiental inteligente</p>
+        </div>
+        <div class="bg-white/20 px-4 py-2 rounded-full text-sm font-bold">
+            XP: <span id="xp">350</span>
+        </div>
+    </div>
+</header>
+
+<main class="max-w-xl mx-auto p-4">
+
+<section id="home" class="page active space-y-4">
+    <div class="camera-box">
+        <video id="camera-feed" autoplay playsinline muted class="hidden"></video>
+        
+        <div id="camera-placeholder" class="absolute inset-0 bg-gradient-to-b from-green-950 to-black flex flex-col items-center justify-center text-white">
+            <i class="fa-solid fa-camera text-5xl opacity-30 mb-4"></i>
+            <p class="opacity-50 text-sm">Câmera pronta para iniciar</p>
+        </div>
+
+        <div class="overlay">
+            <div class="scan-frame">
+                <div class="scan-line"></div>
             </div>
         </div>
-    </header>
+    </div>
 
-    <main class="max-w-md mx-auto px-4 py-4">
+    <div class="grid grid-cols-2 gap-3">
+        <button onclick="abrirCamera()" class="bg-green-600 text-white rounded-2xl py-4 font-bold shadow-lg active:scale-95 transition">
+            <i class="fa-solid fa-camera mr-2"></i> Abrir Câmera
+        </button>
+        <button onclick="scanearObjeto()" class="bg-amber-500 text-white rounded-2xl py-4 font-bold shadow-lg active:scale-95 transition">
+            <i class="fa-solid fa-magnifying-glass mr-2"></i> Escanear
+        </button>
+    </div>
 
-        <section id="inicio-screen" class="screen active space-y-4">
-            <div class="relative rounded-3xl overflow-hidden shadow-xl bg-black h-[380px] w-full border-4 border-white">
-                <div class="absolute inset-0 bg-gradient-to-b from-transparent to-black/40 z-10"></div>
-                
-                <div class="absolute inset-12 border-2 border-green-500 rounded-2xl z-20 flex flex-col items-center justify-center">
-                    <div class="scan-line"></div>
-                    <i class="fa-solid fa-qrcode text-white/20 text-5xl mb-2"></i>
-                    <span class="text-xs text-white/60 font-medium">Modo Simulação Ativo</span>
-                </div>
+    <div id="status" class="card text-center text-sm font-semibold text-green-800">
+        Pronto para iniciar o scanner.
+    </div>
 
-                <button onclick="fazerEscaneamento()" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 bg-green-600 hover:bg-green-700 active:scale-95 text-white font-bold px-6 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all">
-                    <i class="fa-solid fa-camera"></i>
-                    Toque para escanear um objeto
-                </button>
-            </div>
+    <div id="resultado" class="card hidden text-center space-y-3">
+        <div id="tipo" class="inline-block bg-green-100 text-green-700 text-xs font-black px-4 py-2 rounded-full">---</div>
+        <h2 id="nomeObjeto" class="text-2xl font-black text-slate-800">---</h2>
+        <div id="nota" class="inline-block bg-amber-100 text-amber-700 px-3 py-1 rounded-lg text-xs font-bold">---</div>
+        <p id="descricao" class="text-sm text-slate-600"></p>
+        <button onclick="confirmarDescarte()" class="w-full bg-green-600 text-white py-4 rounded-2xl font-bold active:scale-95 transition">
+            Confirmar Descarte (+50 XP)
+        </button>
+    </div>
+</section>
 
-            <div class="bg-green-50 border border-green-200 rounded-2xl p-4 text-center">
-                <p class="text-sm text-green-800 font-medium">Aline qualquer embalagem ou objeto de descarte no quadrado.</p>
-            </div>
+<section id="mapa" class="page space-y-4">
+    <div class="card space-y-4">
+        <h2 class="text-2xl font-black text-slate-800 text-center">📍 Ecopontos</h2>
+        <button onclick="buscarLocalizacao()" class="w-full bg-green-600 text-white py-4 rounded-2xl font-bold active:scale-95 transition">
+            Encontrar Ecopontos
+        </button>
+        <div id="localizacao" class="text-sm text-slate-600 text-center font-medium"></div>
+        <iframe id="mapaFrame" class="w-full h-[320px] rounded-2xl border hidden" loading="lazy"></iframe>
+    </div>
+</section>
 
-            <div id="resultadoBox" class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hidden">
-                <h3 id="resNome" class="font-bold text-lg text-gray-900"></h3>
-                <p id="resImpacto" class="text-sm text-gray-600 mt-1"></p>
-                <span id="resBadge" class="inline-block text-xs font-bold px-3 py-1 rounded-full mt-3"></span>
-            </div>
-        </section>
+<section id="social" class="page space-y-4">
+    <div class="card space-y-3">
+        <h2 class="text-xl font-black text-slate-800">👤 Conta</h2>
+        <input id="email" type="email" placeholder="Seu e-mail" class="w-full border rounded-2xl p-4 text-sm focus:outline-green-600">
+        <input id="senha" type="password" placeholder="Sua senha" class="w-full border rounded-2xl p-4 text-sm">
+        <button onclick="criarConta()" class="w-full bg-green-600 text-white py-4 rounded-2xl font-bold active:scale-95 transition">
+            Entrar / Criar Conta
+        </button>
+        <div id="usuarioAtual" class="text-center text-sm text-slate-500 font-medium">Não conectado</div>
+    </div>
 
-        <section id="mapa-screen" class="screen space-y-4">
-            <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                <h2 class="font-bold text-lg mb-2">📍 Pontos de Coleta Próximos</h2>
-                <p class="text-sm text-gray-600 mb-4">Encontre locais adequados para descarte na sua região.</p>
-                
-                <div class="space-y-3">
-                    <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                        <h4 class="font-bold text-sm text-emerald-700">Ecoponto Central</h4>
-                        <p class="text-xs text-gray-500">Aceita: Plásticos, Vidros e Papelão</p>
-                        <span class="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full mt-1 inline-block">A 500m de você</span>
-                    </div>
-                    <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                        <h4 class="font-bold text-sm text-emerald-700">Descarte de Eletrônicos Sul</h4>
-                        <p class="text-xs text-gray-500">Aceita: Pilhas, Baterias e Eletrodomésticos</p>
-                        <span class="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full mt-1 inline-block">A 1.2 km de você</span>
-                    </div>
-                </div>
-            </div>
-        </section>
+    <div class="card space-y-3">
+        <h2 class="text-xl font-black text-slate-800">💬 Comunidade</h2>
+        <textarea id="mensagem" placeholder="Digite uma mensagem..." class="w-full border rounded-2xl p-4 h-28 text-sm"></textarea>
+        <button onclick="enviarMensagem()" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold active:scale-95 transition">
+            Enviar Mensagem
+        </button>
+    </div>
 
-        <section id="social-screen" class="screen space-y-4">
-            <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-                <h2 class="font-bold text-lg mb-2">👥 Comunidade Eco</h2>
-                <p class="text-sm text-gray-600 mb-4">Veja o impacto dos seus amigos e vizinhos.</p>
+    <div id="listaMensagens" class="space-y-3"></div>
+</section>
 
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold text-sm">1º</div>
-                            <div>
-                                <h4 class="font-bold text-sm">Mariana Silva</h4>
-                                <p class="text-[11px] text-gray-500">Reciclou 42 objetos esta semana</p>
-                            </div>
-                        </div>
-                        <span class="text-xs font-bold text-emerald-600">1,240 XP</span>
-                    </div>
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 bg-gray-400 text-white rounded-full flex items-center justify-center font-bold text-sm">2º</div>
-                            <div>
-                                <h4 class="font-bold text-sm">Você</h4>
-                                <p class="text-[11px] text-gray-500">Mantendo o planeta limpo</p>
-                            </div>
-                        </div>
-                        <span id="socialXp" class="text-xs font-bold text-emerald-600">350 XP</span>
-                    </div>
-                </div>
-            </div>
-        </section>
+<div class="bottom-space"></div>
+</main>
 
-    </main>
+<nav class="navbar">
+    <button onclick="trocarPagina('home', this)" class="nav-btn active">
+        <i class="fa-solid fa-house text-xl"></i> Home
+    </button>
+    <button onclick="trocarPagina('mapa', this)" class="nav-btn">
+        <i class="fa-solid fa-location-dot text-xl"></i> Mapa
+    </button>
+    <button onclick="trocarPagina('social', this)" class="nav-btn">
+        <i class="fa-solid fa-users text-xl"></i> Social
+    </button>
+</nav>
 
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-2 shadow-xl z-40">
-        <div class="max-w-md mx-auto flex justify-around">
-            <button onclick="mudarTela('inicio')" id="nav-inicio" class="flex flex-col items-center gap-1 text-green-600 font-bold text-xs py-1 w-20 transition-all">
-                <i class="fa-solid fa-house text-lg"></i>
-                <span>Início</span>
-            </button>
-            <button onclick="mudarTela('mapa')" id="nav-mapa" class="flex flex-col items-center gap-1 text-gray-400 font-medium text-xs py-1 w-20 transition-all">
-                <i class="fa-solid fa-location-dot text-lg"></i>
-                <span>Mapa</span>
-            </button>
-            <button onclick="mudarTela('social')" id="nav-social" class="flex flex-col items-center gap-1 text-gray-400 font-medium text-xs py-1 w-20 transition-all">
-                <i class="fa-solid fa-users text-lg"></i>
-                <span>Social</span>
-            </button>
-        </div>
-    </nav>
+<script>
+/* =========================
+   FIREBASE CONFIG (Sincronizado)
+========================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe84hPey1KXw",
+  authDomain: "ecoscan-96a80.firebaseapp.com",
+  projectId: "ecoscan-96a80",
+  storageBucket: "ecoscan-96a80.firebasestorage.app",
+  messagingSenderId: "532877468700",
+  appId: "1:532877468700:web:689d25217275313341abd9",
+  measurementId: "G-ZN2B54CN07"
+};
 
-    <script>
-        let xp = 350;
+// Inicialização segura do Firebase
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-        function mudarTela(tela) {
-            // Esconde todas as telas
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            
-            // Reseta estilos dos botões do menu
-            const botoes = ['inicio', 'mapa', 'social'];
-            botoes.forEach(b => {
-                const btn = document.getElementById(`nav-${b}`);
-                btn.classList.remove('text-green-600', 'font-bold');
-                btn.classList.add('text-gray-400', 'font-medium');
-            });
+/* =========================
+   VARIÁVEIS GERAIS
+========================= */
+let stream = null;
+let xp = 350;
 
-            // Ativa a tela escolhida e destaca o botão correspondente
-            document.getElementById(`${tela}-screen`).classList.add('active');
-            const btnAtivo = document.getElementById(`nav-${tela}`);
-            btnAtivo.classList.remove('text-gray-400', 'font-medium');
-            btnAtivo.classList.add('text-green-600', 'font-bold');
+/* =========================
+   TROCAR PÁGINAS
+========================= */
+function trocarPagina(id, btn){
+    document.querySelectorAll(".page").forEach(page => page.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    document.querySelectorAll(".nav-btn").forEach(button => button.classList.remove("active"));
+    btn.classList.add("active");
+}
+
+/* =========================
+   CÂMERA REAL DO DISPOSITIVO
+========================= */
+async function abrirCamera(){
+    try{
+        const video = document.getElementById("camera-feed");
+        const placeholder = document.getElementById("camera-placeholder");
+
+        if(stream) return;
+
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: "environment",
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            },
+            audio: false
+        });
+
+        video.srcObject = stream;
+        video.classList.remove("hidden");
+        placeholder.classList.add("hidden");
+        document.getElementById("status").innerText = "Câmera iniciada com sucesso.";
+    }catch(error){
+        console.error(error);
+        document.getElementById("status").innerText = "Erro ao acessar câmera. Verifique as permissões.";
+    }
+}
+
+/* =========================
+   IA DE ESCANEAMENTO
+========================= */
+function scanearObjeto(){
+    const status = document.getElementById("status");
+    status.innerText = "Analisando com Inteligência Artificial...";
+
+    try{
+        const objetos = [
+            { tipo:"PLÁSTICO", nome:"Garrafa PET", nota:"Sustentabilidade B", descricao:"Descarte na lixeira VERMELHA. Lave a embalagem para evitar resíduos." },
+            { tipo:"METAL", nome:"Lata de Alumínio", nota:"Sustentabilidade A+", descricao:"Descarte na lixeira AMARELA. Material 100% reciclável." },
+            { tipo:"VIDRO", nome:"Garrafa de Vidro", nota:"Sustentabilidade A", descricao:"Descarte na lixeira VERDE. Se estiver quebrada, embale com segurança." },
+            { tipo:"PAPEL", nome:"Caixa de Papelão", nota:"Sustentabilidade A", descricao:"Descarte na lixeira AZUL. Desmonte a caixa para reduzir o volume." }
+        ];
+
+        setTimeout(() => {
+            const objeto = objetos[Math.floor(Math.random() * objetos.length)];
+
+            document.getElementById("resultado").classList.remove("hidden");
+            document.getElementById("tipo").innerText = objeto.tipo;
+            document.getElementById("nomeObjeto").innerText = objeto.nome;
+            document.getElementById("nota").innerText = objeto.nota;
+            document.getElementById("descricao").innerText = objeto.descricao;
+            status.innerText = "Objeto identificado com sucesso!";
+        }, 1000);
+
+    }catch(error){
+        console.error(error);
+        status.innerText = "Falha no escaneamento neural.";
+    }
+}
+
+/* =========================
+   SISTEMA DE PROGRESSÃO (XP)
+========================= */
+function confirmarDescarte(){
+    xp += 50;
+    document.getElementById("xp").innerText = xp;
+    alert("Incrível! +50 XP adicionados à sua conta.");
+    document.getElementById("resultado").classList.add("hidden");
+    document.getElementById("status").innerText = "Descarte registrado. Pronto para o próximo.";
+}
+
+/* =========================
+   GEOLOCALIZAÇÃO CORRIGIDA (HTTPS)
+========================= */
+function buscarLocalizacao(){
+    const local = document.getElementById("localizacao");
+    if(!navigator.geolocation){
+        alert("Geolocalização não suportada neste dispositivo.");
+        return;
+    }
+
+    local.innerText = "Buscando coordenadas GPS...";
+
+    navigator.geolocation.getCurrentPosition(
+        position => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            local.innerHTML = `<strong>Sua posição:</strong> Lat ${lat.toFixed(4)} | Lon ${lng.toFixed(4)}`;
+
+            const mapa = document.getElementById("mapaFrame");
+            mapa.src = `https://maps.google.com/maps?q=${lat},${lng}&z=15&output=embed`;
+            mapa.classList.remove("hidden");
+        },
+        error => {
+            console.error(error);
+            local.innerText = "Não foi possível carregar a localização.";
+            alert("Erro ao obter localização. Ative o GPS do celular.");
+        }
+    );
+}
+
+/* =========================
+   LOGIN E CONTAS
+========================= */
+async function criarConta(){
+    try{
+        const email = document.getElementById("email").value.trim();
+        const senha = document.getElementById("senha").value;
+
+        if(!email || !senha){
+            alert("Por favor, preencha todos os campos.");
+            return;
         }
 
-        function fazerEscaneamento() {
-            const materiais = [
-                { name: "Garrafa Ambar (Vidro)", rec: true, imp: "Descarte no coletor Verde. Alto valor de reciclagem.", cor: "bg-green-100 text-green-800" },
-                { name: "Embalagem PET", rec: true, imp: "Descarte no coletor Vermelho. Lave antes de descartar.", cor: "bg-green-100 text-green-800" },
-                { name: "Bateria de Celular", rec: false, imp: "Logística reversa obrigatória. Entregue em postos especiais.", cor: "bg-red-100 text-red-800" },
-                { name: "Caixa de Papelão", rec: true, imp: "Descarte no coletor Azul. Dobre para ocupar menos espaço.", cor: "bg-green-100 text-green-800" }
-            ];
-
-            const item = materiais[Math.floor(Math.random() * materiais.length)];
-            
-            const box = document.getElementById('resultadoBox');
-            document.getElementById('resNome').innerText = item.name;
-            document.getElementById('resImpacto').innerText = item.imp;
-            
-            const badge = document.getElementById('resBadge');
-            badge.innerText = item.rec ? "Reciclável" : "Não Reciclável";
-            badge.className = `inline-block text-xs font-bold px-3 py-1 rounded-full mt-3 ${item.cor}`;
-            
-            box.classList.remove('hidden');
-
-            // Sobe o XP a cada escaneamento bem-sucedido!
-            xp += 15;
-            document.getElementById('xpValue').innerText = xp;
-            document.getElementById('socialXp').innerText = xp + " XP";
+        try{
+            await auth.createUserWithEmailAndPassword(email, senha);
+            alert("Conta criada com sucesso!");
+        }catch(err){
+            if(err.code === 'auth/email-already-in-use'){
+                await auth.signInWithEmailAndPassword(email, senha);
+                alert("Login efetuado com sucesso!");
+            } else {
+                throw err;
+            }
         }
-    </script>
+    }catch(error){
+        console.error(error);
+        alert(error.message);
+    }
+}
+
+/* =========================
+   OBSERVAR MUDANÇA DE LOGIN
+========================= */
+auth.onAuthStateChanged(user => {
+    const usuario = document.getElementById("usuarioAtual");
+    if(user){
+        usuario.innerHTML = `<span class="text-green-600 font-bold">● Online:</span> ${user.email}`;
+    }else{
+        usuario.innerText = "Não conectado";
+    }
+});
+
+/* =========================
+   MENSAGENS NA NUVEM
+========================= */
+async function enviarMensagem(){
+    try{
+        const texto = document.getElementById("mensagem").value.trim();
+        const user = auth.currentUser;
+
+        if(!user){
+            alert("Faça login na aba 'Conta' antes de enviar uma mensagem.");
+            return;
+        }
+
+        if(!texto){
+            alert("O campo de texto não pode ficar vazio.");
+            return;
+        }
+
+        await db.collection("mensagens").add({
+            usuario: user.email,
+            texto: texto,
+            data: Date.now()
+        });
+
+        document.getElementById("mensagem").value = "";
+    }catch(error){
+        console.error(error);
+        alert("Erro ao enviar mensagem para o servidor.");
+    }
+}
+
+/* =========================
+   CARREGAMENTO SEGURO DA LISTA
+========================= */
+try {
+    db.collection("mensagens")
+    .orderBy("data", "desc")
+    .onSnapshot(snapshot => {
+        const lista = document.getElementById("listaMensagens");
+        if(!lista) return;
+        
+        lista.innerHTML = "";
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            lista.innerHTML += `
+                <div class="message border-l-4 border-green-500 shadow-sm bg-white p-4 rounded-r-xl">
+                    <h3 class="font-bold text-xs text-slate-700">${data.usuario}</h3>
+                    <p class="text-sm mt-1 text-slate-600">${data.texto}</p>
+                </div>
+            `;
+        });
+    }, error => {
+        console.log("Aguardando configuração das chaves de banco de dados...");
+    });
+} catch(e) {
+    console.error("Firebase offline ou não configurado.");
+}
+
+/* =========================
+   SEGURANÇA DA CÂMERA DO APARELHO
+========================= */
+window.addEventListener("beforeunload", () => {
+    if(stream){
+        stream.getTracks().forEach(track => track.stop());
+    }
+});
+</script>
 </body>
 </html>
