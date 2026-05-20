@@ -23,40 +23,34 @@ let model;
 async function carregarIA() {
   try {
     model = await tmImage.load(URL_MODELO + "model.json", URL_MODELO + "metadata.json");
-    console.log("IA carregada com sucesso!");
-  } catch (e) { console.error("Erro ao carregar IA:", e); }
+  } catch (e) { console.error("Erro IA:", e); }
 }
 carregarIA();
 
-window.scanearObjeto = async () => {
-  const resultado = document.getElementById("resultadoScan");
-  const video = document.getElementById("cameraFeed");
-  if (!model || !resultado) return;
-  resultado.classList.remove("hidden");
-  resultado.innerHTML = `<div class="p-4 text-center text-sm"><i class="fa-solid fa-circle-notch animate-spin text-green-600"></i> Analisando...</div>`;
-  
-  try {
-    const prediction = await model.predict(video);
-    let mC = prediction.sort((a,b) => b.probability - a.probability)[0];
-    
-    resultado.innerHTML = `
-      <div class="p-4 bg-white rounded-xl border-l-4 border-green-500 shadow-sm mt-3">
-        <h4 class="font-bold text-slate-800 text-base">${mC.className}</h4>
-        <p class="text-green-600 font-bold text-xs">${(mC.probability * 100).toFixed(0)}% de certeza</p>
-      </div>
-    `;
-  } catch(e) { resultado.innerHTML = `<div class="p-4 text-red-500 text-sm">Erro ao escanear. Tente novamente.</div>`; }
-};
+window.login = async () => { try { await signInWithEmailAndPassword(auth, document.getElementById("email").value, document.getElementById("senha").value); } catch(e) { alert("Erro ao entrar"); } };
+window.logout = async () => await signOut(auth);
 
 window.ligarCamera = async () => {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
         document.getElementById("cameraFeed").srcObject = stream;
-    } catch(e) { alert("Erro ao acessar câmera. Verifique as permissões."); }
+    } catch(e) { alert("Erro na câmera."); }
 };
 
-window.login = async () => { try { await signInWithEmailAndPassword(auth, document.getElementById("email").value, document.getElementById("senha").value); } catch(e) { alert("Erro login"); } };
-window.logout = async () => await signOut(auth);
+window.scanearObjeto = async () => {
+    const res = document.getElementById("resultadoScan");
+    if (!model) return;
+    res.classList.remove("hidden");
+    res.innerHTML = `<p class="p-4 text-center text-sm">Analisando...</p>`;
+    const pred = await model.predict(document.getElementById("cameraFeed"));
+    let m = pred.sort((a,b) => b.probability - a.probability)[0];
+    res.innerHTML = `<div class="p-4 bg-white mt-2 rounded-xl border-l-4 border-green-500 font-bold">${m.className} (${(m.probability*100).toFixed(0)}%)</div>`;
+};
+
+window.mudarAba = (id) => {
+    document.querySelectorAll('.aba').forEach(a => a.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+};
 
 onAuthStateChanged(auth, (u) => {
     if(u) { document.getElementById("loginBox").classList.add("hidden"); document.getElementById("appBox").classList.remove("hidden"); }
@@ -72,8 +66,14 @@ onAuthStateChanged(auth, (u) => {
         <input id="senha" type="password" placeholder="Senha" class="w-full p-3 border rounded-xl mb-4">
         <button onclick="login()" class="w-full bg-green-600 text-white p-3 rounded-xl font-bold">Entrar</button>
     </div>
+
     <div id="appBox" class="hidden">
-        <div id="scan">
+        <div class="flex gap-2 mb-4">
+            <button onclick="mudarAba('scan')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold">Scanner</button>
+            <button onclick="mudarAba('chat')" class="bg-slate-200 px-4 py-2 rounded-lg text-sm font-bold">Mural</button>
+        </div>
+        
+        <div id="scan" class="aba">
             <video id="cameraFeed" autoplay playsinline class="w-full h-64 bg-black rounded-2xl object-cover"></video>
             <div class="grid grid-cols-2 gap-2 mt-2">
                 <button onclick="ligarCamera()" class="bg-slate-800 text-white py-4 rounded-xl font-bold text-xs">Ligar Câmera</button>
@@ -81,7 +81,9 @@ onAuthStateChanged(auth, (u) => {
             </div>
             <div id="resultadoScan" class="hidden"></div>
         </div>
-        <button onclick="logout()" class="text-red-500 text-xs mt-4 underline">Sair da conta</button>
+        
+        <div id="chat" class="aba hidden text-slate-500">Mural de mensagens em breve...</div>
+        <button onclick="logout()" class="text-red-500 text-xs mt-4 underline">Sair</button>
     </div>
   </div>
 </body>
