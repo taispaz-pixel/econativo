@@ -8,10 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    
     <style>
         html{
             scroll-behavior:smooth;
@@ -133,10 +129,10 @@
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="abrirCamera()" class="bg-green-600 text-white rounded-2xl py-4 font-bold shadow-lg active:scale-95">
+                <button id="btnAbrirCamera" class="bg-green-600 text-white rounded-2xl py-4 font-bold shadow-lg active:scale-95">
                     <i class="fa-solid fa-camera mr-2"></i> Abrir Câmera
                 </button>
-                <button onclick="scanearObjeto()" class="bg-amber-500 text-white rounded-2xl py-4 font-bold shadow-lg active:scale-95">
+                <button id="btnScanearObjeto" class="bg-amber-500 text-white rounded-2xl py-4 font-bold shadow-lg active:scale-95">
                     <i class="fa-solid fa-qrcode mr-2"></i> Escanear
                 </button>
             </div>
@@ -158,7 +154,7 @@
                 <h2 class="font-bold text-xl text-slate-800">📍 Pontos de Coleta</h2>
                 <p class="text-sm text-slate-500">Encontre locais próximos para descarte correto.</p>
                 <div class="w-100 h-64 bg-slate-100 rounded-2xl overflow-hidden relative border border-slate-200">
-                    <iframe class="w-full h-full border-none" src="https://www.google.com/maps/embed?pb=!1m16!1m12!1m3!1d14798.57245958611!2d-48.56853245!3d-22.2725454!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!2m1!1sreciclagem!5e0!3m2!1spt-BR!2sbr!4v1716245000000!5m2!1spt-BR!2sbr" allowfullscreen="" loading="lazy"></iframe>
+                    <iframe class="w-full h-full border-none" src="https://maps.google.com/maps?q=reciclagem&t=&z=13&ie=UTF-8&iwloc=&output=embed" allowfullscreen="" loading="lazy"></iframe>
                 </div>
             </div>
         </section>
@@ -169,7 +165,7 @@
                 <div class="space-y-2">
                     <input type="email" id="email" placeholder="Seu e-mail" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-green-500" />
                     <input type="password" id="senha" placeholder="Sua senha" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-green-500" />
-                    <button onclick="fazerLogin()" class="w-full bg-slate-900 text-white p-3 rounded-xl font-bold text-sm shadow-md active:scale-95">
+                    <button id="btnLogin" class="w-full bg-slate-900 text-white p-3 rounded-xl font-bold text-sm shadow-md active:scale-95">
                         Entrar / Criar Conta
                     </button>
                     <p id="usuarioAtual" class="text-xs text-center text-slate-500 font-semibold mt-2">Não conectado</p>
@@ -185,7 +181,7 @@
 
                 <div class="flex gap-2 pt-2 border-t border-slate-100">
                     <input type="text" id="mensagem" placeholder="Digite uma mensagem..." class="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-green-500" />
-                    <button onclick="enviarMensagem()" class="bg-green-600 text-white px-4 rounded-xl font-bold active:scale-95">
+                    <button id="btnEnviarMsg" class="bg-green-600 text-white px-4 rounded-xl font-bold active:scale-95">
                         <i class="fa-solid fa-paper-plane"></i>
                     </button>
                 </div>
@@ -197,23 +193,26 @@
 
     <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-100 p-4 shadow-xl z-50">
         <div class="max-w-xl mx-auto flex justify-around items-center">
-            <button onclick="mudarAba('home')" id="btn-home" class="nav-btn active">
+            <button id="nav-home" class="nav-btn active">
                 <i class="fa-solid fa-house text-xl"></i>
                 <span>Home</span>
             </button>
-            <button onclick="mudarAba('mapa')" id="btn-mapa" class="nav-btn">
+            <button id="nav-mapa" class="nav-btn">
                 <i class="fa-solid fa-map-location-dot text-xl"></i>
                 <span>Mapa</span>
             </button>
-            <button onclick="mudarAba('social')" id="btn-social" class="nav-btn">
+            <button id="nav-social" class="nav-btn">
                 <i class="fa-solid fa-users text-xl"></i>
                 <span>Social</span>
             </button>
         </div>
     </nav>
 
-    <script>
-        // ✅ CONFIGURAÇÃO DO FIREBASE - CORRIGIDA E VALIDADA
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
         const firebaseConfig = {
           apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe84hPey1KXw",
           authDomain: "ecoscan-96a80.firebaseapp.com",
@@ -224,13 +223,10 @@
           measurementId: "G-ZN2B54CN07"
         };
 
-        // ✅ Inicialização segura
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+        // Inicialização
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
         // Controle de Abas
         function mudarAba(nomeAba) {
@@ -238,11 +234,15 @@
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             
             document.getElementById(nomeAba).classList.add('active');
-            document.getElementById('btn-' + nomeAba).classList.add('active');
+            document.getElementById('nav-' + nomeAba).classList.add('active');
             
             if(nomeAba === 'home') abrirCamera();
             else fecharCamera();
         }
+
+        document.getElementById('nav-home').addEventListener('click', () => mudarAba('home'));
+        document.getElementById('nav-mapa').addEventListener('click', () => mudarAba('mapa'));
+        document.getElementById('nav-social').addEventListener('click', () => mudarAba('social'));
 
         // Sistema de Câmera Local
         let stream = null;
@@ -256,7 +256,6 @@
                 placeholder.classList.add('hidden');
             } catch (err) {
                 console.error("Erro ao acessar câmera: ", err);
-                alert("Permita o acesso à câmera para escanear objetos.");
             }
         }
 
@@ -268,7 +267,9 @@
             }
         }
 
-        // Simulador de Escaneamento Inteligente
+        document.getElementById('btnAbrirCamera').addEventListener('click', abrirCamera);
+
+        // Simulador de Escaneamento
         const bancoDicas = [
             { obj: "Garrafa PET", tipo: "Plástico", dica: "Lave antes de descartar. Destine à lixeira vermelha ou sacolas de recicláveis secos." },
             { obj: "Lata de Refrigerante", tipo: "Metal", dica: "Amasse a latinha para ocupar menos espaço. Descarte na lixeira amarela." },
@@ -276,7 +277,7 @@
             { obj: "Pote de Maionese", tipo: "Vidro", dica: "Retire totalmente os resíduos orgânicos. Vidros quebrados devem ser embrulhados por segurança." }
         ];
 
-        function scanearObjeto() {
+        document.getElementById('btnScanearObjeto').addEventListener('click', () => {
             const card = document.getElementById('resultado-card');
             card.classList.remove('hidden');
             document.getElementById('res-objeto').innerText = "Analisando imagem...";
@@ -290,13 +291,12 @@
                 document.getElementById('res-dica').innerText = sorteio.dica;
                 card.classList.remove('animate-pulse');
                 
-                // Ganhar XP
                 const xpAtual = parseInt(document.getElementById('xp').innerText);
                 document.getElementById('xp').innerText = xpAtual + 50;
             }, 1800);
-        }
+        });
 
-        // ✅ Autenticação Firebase - Completa
+        // Autenticação Moderna
         async function fazerLogin() {
             const email = document.getElementById('email').value.trim();
             const senha = document.getElementById('senha').value;
@@ -307,13 +307,12 @@
             }
 
             try {
-                await auth.signInWithEmailAndPassword(email, senha);
+                await signInWithEmailAndPassword(auth, email, senha);
             } catch (erro) {
-                console.log("Código do erro:", erro.code);
                 if (erro.code === 'auth/user-not-found' || erro.code === 'auth/invalid-credential' || erro.code === 'auth/wrong-password') {
                     try {
-                        await auth.createUserWithEmailAndPassword(email, senha);
-                        alert("✅ Nova conta ambiental criada e conectada com sucesso!");
+                        await createUserWithEmailAndPassword(auth, email, senha);
+                        alert("✅ Nova conta ambiental criada com sucesso!");
                     } catch (erroCadastro) {
                         alert("Erro ao criar conta: " + erroCadastro.message);
                     }
@@ -323,8 +322,9 @@
             }
         }
 
-        // Monitor do Estado de Login
-        auth.onAuthStateChanged(user => {
+        document.getElementById('btnLogin').addEventListener('click', fazerLogin);
+
+        onAuthStateChanged(auth, user => {
             const usuario = document.getElementById("usuarioAtual");
             if(user){
                 usuario.innerHTML = `<span class="text-green-600 font-bold">● Online:</span> ${user.email}`;
@@ -333,61 +333,49 @@
             }
         });
 
-        // Enviar Mensagens do Chat para a Nuvem
+        // Enviar Mensagens para o Firestore moderno
         async function enviarMensagem(){
+            const texto = document.getElementById('mensagem').value.trim();
+            const user = auth.currentUser;
+
+            if(!user){
+                alert("Faça login na aba 'Conta' antes de enviar uma mensagem.");
+                return;
+            }
+            if(!texto){
+                alert("O campo de texto não pode ficar vazio.");
+                return;
+            }
+
             try {
-                const texto = document.getElementById('mensagem').value.trim();
-                const user = auth.currentUser;
-
-                if(!user){
-                    alert("Faça login na aba 'Conta' antes de enviar uma mensagem.");
-                    return;
-                }
-                if(!texto){
-                    alert("O campo de texto não pode ficar vazio.");
-                    return;
-                }
-
-                await db.collection("mensagens").add({
+                await addDoc(collection(db, "mensagens"), {
                     usuario: user.email,
                     texto: texto,
                     data: Date.now()
                 });
-
                 document.getElementById('mensagem').value = "";
             } catch(error){
-                console.error(error);
-                alert("Erro ao enviar mensagem para o servidor.");
+                alert("Erro ao enviar mensagem.");
             }
         }
 
-        // Escutar Mensagens em Tempo Real da Nuvem
-        try {
-            db.collection("mensagens")
-            .orderBy("data", "desc")
-            .onSnapshot(snapshot => {
-                const lista = document.getElementById("listaMensagens");
-                if(!lista) return;
+        document.getElementById('btnEnviarMsg').addEventListener('click', enviarMensagem);
 
-                lista.innerHTML = "";
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    lista.innerHTML += `
-                        <div class="message border-l-4 border-green-500 shadow-sm bg-white p-4 rounded-r-xl">
-                            <h3 class="font-bold text-xs text-slate-700">${data.usuario}</h3>
-                            <p class="text-sm mt-1 text-slate-600">${data.texto}</p>
-                        </div>
-                    `;
-                });
-            }, error => {
-                console.log("Aguardando configuração das chaves de banco de dados...");
+        // Escutar Mensagens em Tempo Real (Modo Moderno)
+        const q = query(collection(db, "mensagens"), orderBy("data", "desc"));
+        onSnapshot(q, snapshot => {
+            const lista = document.getElementById("listaMensagens");
+            if(!lista) return;
+            lista.innerHTML = "";
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                lista.innerHTML += `
+                    <div class="message border-l-4 border-green-500 shadow-sm bg-white p-4 rounded-r-xl">
+                        <h3 class="font-bold text-xs text-slate-700">${data.usuario}</h3>
+                        <p class="text-sm mt-1 text-slate-600">${data.texto}</p>
+                    </div>
+                `;
             });
-        } catch(e) {
-            console.error("Firebase offline ou não configurado.");
-        }
-
-        window.addEventListener("beforeunload", () => {
-            fecharCamera();
         });
     </script>
 </body>
