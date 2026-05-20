@@ -30,45 +30,25 @@ async function carregarIA() {
 }
 carregarIA();
 
-const dadosReciclagem = {
-  "comida": { nome: "Resíduo Orgânico", tipo: "Lixeira Marrom 🟤", dica: "Perfeito para compostagem!" },
-  "papelao": { nome: "Papelão / Papel", tipo: "Lixeira Azul 🔵", dica: "Dobre para economizar espaço." },
-  "plastico": { nome: "Plástico / Pet", tipo: "Lixeira Vermelha 🔴", dica: "Lave para retirar restos." },
-  "vidro": { nome: "Vidro", tipo: "Lixeira Verde 🟢", dica: "Cuidado ao descartar quebrados!" },
-  "aluminio": { nome: "Alumínio / Metal", tipo: "Lixeira Amarela 🟡", dica: "Amasse para reciclar mais." }
-};
-
 window.scanearObjeto = async () => {
   const resultado = document.getElementById("resultadoScan");
+  const video = document.getElementById("cameraFeed");
   if (!model || !resultado) return;
   resultado.classList.remove("hidden");
-  resultado.innerHTML = `<div class="text-center py-6"><i class="fa-solid fa-circle-notch animate-spin text-green-600"></i></div>`;
-  
+  resultado.innerHTML = `<div class="p-4 text-center">Analisando...</div>`;
   try {
-    const prediction = await model.predict(document.getElementById("cameraFeed"));
-    let mC = "", mP = 0;
-    for(let i=0; i<maxPredictions; i++) { if(prediction[i].probability > mP) { mP = prediction[i].probability; mC = prediction[i].className.toLowerCase().trim(); } }
-    
-    if (mC === "fundo" || mP < 0.5) {
-      resultado.innerHTML = `<div class="p-4 bg-amber-50 text-amber-900 text-center font-bold text-xs mt-3">Nenhum objeto detectado!</div>`;
-      return;
-    }
-
-    let extra = mC === "comida" ? `<div class="p-3 bg-amber-50 border-l-4 border-amber-400 text-xs mt-2">🍂 <b>Dica de Compostagem:</b> Cascas, restos de legumes, borra de café e ovos são ótimos! Evite carnes e laticínios.</div>` : "";
-    
-    resultado.innerHTML = `
-      <div class="p-4 bg-slate-50 rounded-xl border-l-4 border-green-500 shadow-sm mt-3">
-        <h4 class="font-bold text-slate-800">${dadosReciclagem[mC]?.nome || mC}</h4>
-        <p class="text-green-600 font-bold text-xs">${dadosReciclagem[mC]?.tipo || ""}</p>
-        <p class="text-xs text-slate-600 mt-2">${dadosReciclagem[mC]?.dica || ""}</p>
-      </div>
-      ${extra}
-    `;
-  } catch (e) { console.error(e); }
+    const prediction = await model.predict(video);
+    let mC = prediction.sort((a,b) => b.probability - a.probability)[0];
+    resultado.innerHTML = `<div class="p-4 bg-white rounded-xl shadow mt-2 font-bold">${mC.className} (${(mC.probability*100).toFixed(0)}%)</div>`;
+  } catch(e) { resultado.innerHTML = "Erro ao escanear."; }
 };
 
-window.login = async () => { try { await signInWithEmailAndPassword(auth, document.getElementById("email").value, document.getElementById("senha").value); } catch(e) { alert("Erro ao entrar"); } };
+window.login = async () => { try { await signInWithEmailAndPassword(auth, document.getElementById("email").value, document.getElementById("senha").value); } catch(e) { alert("Erro login"); } };
 window.logout = async () => await signOut(auth);
+window.mudarAba = (id) => {
+    document.querySelectorAll('.aba').forEach(a => a.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+};
 onAuthStateChanged(auth, (u) => {
     if(u) { document.getElementById("loginBox").classList.add("hidden"); document.getElementById("appBox").classList.remove("hidden"); }
     else { document.getElementById("loginBox").classList.remove("hidden"); document.getElementById("appBox").classList.add("hidden"); }
@@ -83,12 +63,17 @@ onAuthStateChanged(auth, (u) => {
         <button onclick="login()" class="w-full bg-green-600 text-white p-3 rounded-xl font-bold">Entrar</button>
     </div>
     <div id="appBox" class="hidden">
-        <button onclick="logout()" class="text-red-500 text-xs font-bold mb-4">Sair</button>
-        <div class="scan-frame w-full h-64 bg-black rounded-2xl overflow-hidden mb-4">
-            <video id="cameraFeed" autoplay playsinline class="w-full h-full object-cover"></video>
+        <div class="flex gap-2 mb-4">
+            <button onclick="mudarAba('scan')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm">Scanner</button>
+            <button onclick="mudarAba('chat')" class="bg-slate-200 px-4 py-2 rounded-lg text-sm">Mural</button>
         </div>
-        <button onclick="scanearObjeto()" class="w-full bg-green-600 text-white font-bold py-4 rounded-xl">Analisar</button>
-        <div id="resultadoScan" class="hidden"></div>
+        <div id="scan" class="aba">
+            <video id="cameraFeed" autoplay playsinline class="w-full h-64 bg-black rounded-2xl object-cover"></video>
+            <button onclick="scanearObjeto()" class="w-full mt-2 bg-amber-500 text-white py-4 rounded-xl font-bold">Analisar</button>
+            <div id="resultadoScan" class="hidden"></div>
+        </div>
+        <div id="chat" class="aba hidden">Mural de Mensagens aqui...</div>
+        <button onclick="logout()" class="text-red-500 text-xs mt-4">Sair</button>
     </div>
   </div>
 </body>
