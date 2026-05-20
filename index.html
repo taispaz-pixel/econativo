@@ -1,9 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>EcoScan</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<script type="module">
+
+/* =========================
+   FIREBASE IMPORTS
+========================= */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+/* =========================
+   FIREBASE CONFIG
+========================= */
+
 const firebaseConfig = {
+
   apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw",
+
   authDomain: "ecoscan-96a80.firebaseapp.com",
+
   projectId: "ecoscan-96a80",
+
   storageBucket: "ecoscan-96a80.firebasestorage.app",
+
   messagingSenderId: "532877468700",
+
   appId: "1:532877468700:web:689d25217275313341abd9",
+
   measurementId: "G-ZN2B54CN07"
+
 };
+
+/* =========================
+   INICIAR FIREBASE
+========================= */
+
+const app = initializeApp(firebaseConfig);
+
+const auth = getAuth(app);
+
+/* =========================
+   LOGIN
+========================= */
+
+window.login = async () => {
+
+  const email = document.getElementById("email").value;
+
+  const senha = document.getElementById("senha").value;
+
+  if (!email || !senha) {
+
+    alert("Preencha email e senha");
+
+    return;
+
+  }
+
+  try {
+
+    await signInWithEmailAndPassword(auth, email, senha);
+
+    alert("Login realizado com sucesso!");
+
+  } catch (error) {
+
+    alert("Erro no login: " + error.message);
+
+  }
+
+};
+
+/* =========================
+   CADASTRO
+========================= */
+
+window.registrar = async () => {
+
+  const email = document.getElementById("email").value;
+
+  const senha = document.getElementById("senha").value;
+
+  if (!email || !senha) {
+
+    alert("Preencha email e senha");
+
+    return;
+
+  }
+
+  try {
+
+    await createUserWithEmailAndPassword(auth, email, senha);
+
+    alert("Conta criada com sucesso!");
+
+  } catch (error) {
+
+    alert("Erro no cadastro: " + error.message);
+
+  }
+
+};
+
+/* =========================
+   LOGOUT
+========================= */
+
+window.logout = async () => {
+
+  await signOut(auth);
+
+};
+
+/* =========================
+   VERIFICAR LOGIN
+========================= */
+
+onAuthStateChanged(auth, (user) => {
+
+  if (user) {
+
+    document.getElementById("loginBox").classList.add("hidden");
+
+    document.getElementById("appBox").classList.remove("hidden");
+
+    document.getElementById("usuario").innerText = user.email;
+
+  } else {
+
+    document.getElementById("loginBox").classList.remove("hidden");
+
+    document.getElementById("appBox").classList.add("hidden");
+
+  }
+
+});
+
+</script>
+
+<style>
+
+body{
+
+  margin:0;
+  padding:0;
+  font-family:Arial;
+  background:#f4f4f4;
+
+}
+
+.card{
+
+  background:white;
+  border-radius:25px;
+  padding:25px;
+  box-shadow:0 5px 20px rgba(0,0,0,0.1);
+
+}
+
+.topo{
+
+  background:linear-gradient(90deg,#0f9b0f,#006400);
+  border-radius:20px;
+  padding:25px;
+  color:white;
+  margin-bottom:25px;
+
+}
+
+</style>
+
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-4">
+
+<div class="w-full max-w-md">
+
+<div class="card">
+
+<div class="topo">
+
+<h1 class="text-4xl font-bold">
+🌱 EcoScan
+</h1>
+
+<p class="mt-2 opacity-90">
+Inteligência Ambiental
+</p>
+
+</div>
+
+<!-- LOGIN -->
+
+<div id="loginBox">
+
+<input
+id="email"
+type="email"
+placeholder="Digite seu email"
+class="w-full p-4 border rounded-xl mb-4"
+/>
+
+<input
+id="senha"
+type="password"
+placeholder="Digite sua senha"
+class="w-full p-4 border rounded-xl mb-4"
+/>
+
+<button
+onclick="login()"
+class="w-full bg-green-700 text-white p-4 rounded-xl font-bold mb-3"
+>
+Entrar
+</button>
+
+<button
+onclick="registrar()"
+class="w-full bg-blue-600 text-white p-4 rounded-xl font-bold"
+>
+Criar Conta
+</button>
+
+</div>
+
+<!-- APP -->
+
+<div id="appBox" class="hidden">
+
+<div class="bg-green-100 p-4 rounded-xl mb-6">
+
+<p class="font-bold text-green-800">
+Usuário conectado:
+</p>
+
+<p id="usuario" class="text-green-700"></p>
+
+</div>
+
+<div class="grid grid-cols-2 gap-4">
+
+<div class="bg-white border p-5 rounded-2xl shadow text-center">
+
+<div class="text-4xl">
+♻️
+</div>
+
+<p class="font-bold mt-2">
+Reciclagem
+</p>
+
+</div>
+
+<div class="bg-white border p-5 rounded-2xl shadow text-center">
+
+<div class="text-4xl">
+📍
+</div>
+
+<p class="font-bold mt-2">
+Mapa
+</p>
+
+</div>
+
+<div class="bg-white border p-5 rounded-2xl shadow text-center">
+
+<div class="text-4xl">
+🏆
+</div>
+
+<p class="font-bold mt-2">
+XP
+</p>
+
+</div>
+
+<div class="bg-white border p-5 rounded-2xl shadow text-center">
+
+<div class="text-4xl">
+👥
+</div>
+
+<p class="font-bold mt-2">
+Comunidade
+</p>
+
+</div>
+
+</div>
+
+<button
+onclick="logout()"
+class="w-full mt-6 bg-red-600 text-white p-4 rounded-xl font-bold"
+>
+Sair
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+</body>
+</html>
