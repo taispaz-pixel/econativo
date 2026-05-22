@@ -26,23 +26,27 @@ const db = getFirestore(app);
 
 const EMAIL_ADMIN = "tais.paz@live.com";
 
-// Configuração Nyckel (Para a câmara)
+// Configuração Nyckel (Para a câmera)
 const NYCKEL_FUNCTION_ID = "qt82mge0uiwoay8p"; 
 const NYCKEL_CLIENT_ID = "u1wgqv728lzvi1xzovisl4tvij1oak7i";
 const NYCKEL_CLIENT_SECRET = "ktiutb8bsjv3yacmcbkeemop80y7ujrndgaoi26dm7z19px76fbzzs3y5tmsd0g9";
 
 const termosProibidos = ["macaco", "viado", "negão", "puta", "homofobico", "racista", "bicha", "arrombado"];
 
-/* BANCO DE DADOS (Sinônimos e Curiosidades) */
+/* BANCO DE DADOS E PESOS ESTIMADOS */
 const dadosReciclagem = {
-  "comida": { nome: "Resíduo Orgânico (Comida) 🌱", tipo: "Lixeira Marrom 🟤", dica: "Descarte na lixeira de resíduos orgânicos ou reserve para a compostagem caseira.", sinonimos: "Restos de refeições, cascas, borra de café, saquinhos de chá, cascas de ovos.", curiosidade: "Compostar o lixo orgânico pode reduzir o volume de lixo da sua casa em até 50%!" },
-  "papelao": { nome: "Caixa / Papelão / Papel ♻️", tipo: "Lixeira Azul 🔵", dica: "Incrível! Esvazie todo o conteúdo e desmonte ou dobre a caixa para economizar espaço.", sinonimos: "Caixas de sapato, revistas, jornais, panfletos, papel sulfite, embalagens.", curiosidade: "Reciclar 1 tonelada de papelão salva 17 árvores adultas de serem cortadas!" },
-  "plastico": { nome: "Plástico / Embalagem Pet ♻️", tipo: "Lixeira Vermelha 🔴", dica: "Lave rapidamente o interior para remover restos de líquidos ou alimentos.", sinonimos: "Garrafas PET, potes de margarina, sacolas plásticas, copos descartáveis.", curiosidade: "O plástico que você acabou de salvar demoraria até 400 anos para sumir na natureza!" },
-  "vidro": { nome: "Vidro / Frascos e Potes ♻️", tipo: "Lixeira Verde 🟢", dica: "Retire tampas antes. Se estiver quebrado, embale em jornal para proteger os coletores.", sinonimos: "Garrafas de bebida, potes de geleia, copos de vidro, frascos de perfume.", curiosidade: "O vidro é 100% reciclável e pode ser reutilizado infinitas vezes sem perder qualidade." },
-  "aluminio": { nome: "Alumínio / Latas de Metal ♻️", tipo: "Lixeira Amarela 🟡", dica: "Amasse bem as latinhas antes do descarte para ajudar a reduzir o volume armazenado.", sinonimos: "Latinhas de refrigerante/cerveja, latas de sardinha, tampinhas de metal.", curiosidade: "Reciclar 1 única latinha economiza energia suficiente para manter uma TV ligada por 3 horas!" }
+  "comida": { nome: "Resíduo Orgânico 🌱", tipo: "Lixeira Marrom 🟤", dica: "Reserve para compostagem.", pesoKg: 0.250, custoPorKg: 1.50, sinonimos: "Restos, cascas, café.", curiosidade: "Pode reduzir o lixo em 50%!", buscaMapa: "compostagem" },
+  "papelao": { nome: "Papelão / Papel ♻️", tipo: "Lixeira Azul 🔵", dica: "Dobre para economizar espaço.", pesoKg: 0.200, custoPorKg: 0.80, sinonimos: "Caixas, revistas, jornais.", curiosidade: "Salva árvores de serem cortadas!", buscaMapa: "reciclagem+de+papel" },
+  "plastico": { nome: "Plástico / Pet ♻️", tipo: "Lixeira Vermelha 🔴", dica: "Lave o interior antes.", pesoKg: 0.050, custoPorKg: 2.00, sinonimos: "Garrafas PET, potes, sacolas.", curiosidade: "Demoraria 400 anos na natureza!", buscaMapa: "reciclagem+de+plastico" },
+  "vidro": { nome: "Vidro ♻️", tipo: "Lixeira Verde 🟢", dica: "Embale se estiver quebrado.", pesoKg: 0.300, custoPorKg: 0.30, sinonimos: "Garrafas, copos, frascos.", curiosidade: "É 100% reciclável infinitamente!", buscaMapa: "reciclagem+de+vidro" },
+  "aluminio": { nome: "Alumínio / Metal ♻️", tipo: "Lixeira Amarela 🟡", dica: "Amasse bem as latinhas.", pesoKg: 0.015, custoPorKg: 6.50, sinonimos: "Latinhas, tampas de metal.", curiosidade: "Economiza muita energia!", buscaMapa: "reciclagem+de+metal" },
+  "pilha": { nome: "Pilhas e Baterias ⚠️", tipo: "Lixeira Laranja 🟠", dica: "Entregue em pontos de coleta.", pesoKg: 0.025, custoPorKg: 10.00, sinonimos: "Pilhas AA, baterias.", curiosidade: "Contêm metais pesados tóxicos!", buscaMapa: "descarte+de+pilhas+e+baterias" }
 };
 
-const mensagensAgradecimento = [ "O planeta agradece imensamente o seu cuidado! 🌱", "Você está ajudando a reduzir o lixo no mundo! 🌍✨", "Reciclar protege nossa biodiversidade! 🌲", "O EcoScan se orgulha de você! 🎉" ];
+// Histórico de Escaneamento do Usuário
+let historicoResiduos = { comida: 0, papelao: 0, plastico: 0, vidro: 0, aluminio: 0, pilha: 0 };
+
+const mensagensAgradecimento = [ "O planeta agradece! 🌱", "Ajudando a reduzir lixo! 🌍", "O EcoScan orgulha-se! 🎉" ];
 const somMoeda = new Audio("https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3");
 
 function atualizarNivel() {
@@ -51,11 +55,49 @@ function atualizarNivel() {
   if (xp >= 200 && xp < 500) { titulo = "Defensor Eco 🌿"; cor = "text-emerald-300"; }
   else if (xp >= 500 && xp < 1000) { titulo = "Guardião da Natureza 🌳"; cor = "text-yellow-300"; }
   else if (xp >= 1000) { titulo = "Mestre Sustentável 🌍"; cor = "text-amber-400"; }
-  const elementoTitulo = document.getElementById("tituloUsuario");
-  elementoTitulo.innerText = titulo; elementoTitulo.className = text-[10px] font-black uppercase tracking-wider ${cor};
+  document.getElementById("tituloUsuario").innerText = titulo; 
+  document.getElementById("tituloUsuario").className = mt-1 text-[10px] font-black uppercase tracking-wider ${cor};
+  atualizarRelatorioGrafico();
 }
 
-/* CÂMERA */
+/* FUNÇÃO PARA GERAR O RELATÓRIO MATEMÁTICO */
+window.atualizarRelatorioGrafico = () => {
+  let totalItens = 0; let totalKg = 0; let totalEconomia = 0;
+  let htmlDetalhes = "";
+
+  for (const [chave, qtd] of Object.entries(historicoResiduos)) {
+    totalItens += qtd;
+    let pesoTotalClass = qtd * dadosReciclagem[chave].pesoKg;
+    let econTotalClass = pesoTotalClass * dadosReciclagem[chave].custoPorKg;
+    totalKg += pesoTotalClass;
+    totalEconomia += econTotalClass;
+
+    if (qtd > 0) {
+      htmlDetalhes += `
+        <div class="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 mb-2 shadow-sm">
+          <div>
+            <p class="font-bold text-sm text-slate-800">${dadosReciclagem[chave].nome}</p>
+            <p class="text-xs text-slate-500">${qtd} itens lidos</p>
+          </div>
+          <div class="text-right">
+            <p class="font-bold text-green-700">${pesoTotalClass.toFixed(3)} kg</p>
+            <p class="text-xs font-medium text-slate-500">R$ ${econTotalClass.toFixed(2)}</p>
+          </div>
+        </div>`;
+    }
+  }
+
+  if (totalItens === 0) {
+    htmlDetalhes = <p class="text-xs text-center text-slate-500 italic mt-4">Escaneie objetos com a câmera para gerar dados para o relatório.</p>;
+  }
+
+  document.getElementById("relTotalItens").innerText = totalItens;
+  document.getElementById("relTotalKg").innerText = totalKg.toFixed(2) + " kg";
+  document.getElementById("relTotalEcon").innerText = "R$ " + totalEconomia.toFixed(2);
+  document.getElementById("relatorioLista").innerHTML = htmlDetalhes;
+};
+
+/* CÂMERA E NYCKEL */
 let streamAtual = null;
 window.abrirCamera = async () => {
   const video = document.getElementById("cameraFeed");
@@ -63,7 +105,7 @@ window.abrirCamera = async () => {
   try {
     streamAtual = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
     video.srcObject = streamAtual; video.classList.remove("hidden"); placeholder.classList.add("hidden");
-  } catch (err) { mostrarAviso("Permita a câmera nas configurações.", "erro"); }
+  } catch (err) { mostrarAviso("Permita a câmera.", "erro"); }
 };
 
 window.pararCamera = () => {
@@ -75,21 +117,23 @@ window.pararCamera = () => {
   }
 };
 
-/* IA NYCKEL (Scanner de Fotos) */
+window.mostrarNoMapa = (termoBusca) => {
+  document.getElementById("mapaIframe").src = https://maps.google.com/maps?q=$${termoBusca}&output=embed;
+  window.mudarAba('mapa');
+};
+
 async function getNyckelToken() {
   const response = await fetch('https://www.nyckel.com/connect/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: grant_type=client_credentials&client_id=${NYCKEL_CLIENT_ID}&client_secret=${NYCKEL_CLIENT_SECRET}
   });
-  const data = await response.json();
-  return data.access_token;
+  const data = await response.json(); return data.access_token;
 }
 
 window.scanearObjeto = async () => {
   const resultado = document.getElementById("resultadoScan");
   resultado.classList.remove("hidden");
-  resultado.innerHTML = <div class="text-center py-6"><i class="fa-solid fa-bolt text-4xl text-green-500 mb-3 animate-bounce"></i><p class="font-semibold text-slate-700 text-xs">Analisando imagem na nuvem...</p></div>;
+  resultado.innerHTML = <div class="text-center py-6"><i class="fa-solid fa-bolt text-4xl text-green-500 mb-3 animate-bounce"></i><p class="font-semibold text-slate-700 text-xs">A analisar...</p></div>;
   const video = document.getElementById("cameraFeed");
   try {
     const canvas = document.createElement("canvas");
@@ -97,8 +141,7 @@ window.scanearObjeto = async () => {
     canvas.getContext("2d").drawImage(video, 0, 0);
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
     const token = await getNyckelToken();
-    const formData = new FormData();
-    formData.append('data', blob, 'image.jpg');
+    const formData = new FormData(); formData.append('data', blob, 'image.jpg');
     const resposta = await fetch(https://www.nyckel.com/v1/functions/${NYCKEL_FUNCTION_ID}/invoke, {
       method: "POST", headers: { 'Authorization': Bearer ${token} }, body: formData
     });
@@ -106,127 +149,95 @@ window.scanearObjeto = async () => {
     if (!dadosNyckel || !dadosNyckel.labelName) throw new Error("Sem resposta.");
     let classeLida = dadosNyckel.labelName.toLowerCase().trim();
     let maiorClasse = classeLida;
-    if(classeLida.includes("comida") || classeLida.includes("organico") || classeLida.includes("orgânico")) maiorClasse = "comida";
+    
+    if(classeLida.includes("comida") || classeLida.includes("organico")) maiorClasse = "comida";
     else if(classeLida.includes("papel")) maiorClasse = "papelao";
     else if(classeLida.includes("plastico") || classeLida.includes("pet")) maiorClasse = "plastico";
     else if(classeLida.includes("vidro")) maiorClasse = "vidro";
     else if(classeLida.includes("aluminio") || classeLida.includes("metal") || classeLida.includes("lata")) maiorClasse = "aluminio";
+    else if(classeLida.includes("pilha") || classeLida.includes("bateria")) maiorClasse = "pilha";
 
-    if (maiorClasse === "fundo" || maiorClasse === "nada" || maiorClasse === "background") {
-      resultado.innerHTML = <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold mt-3 text-center">⚠️ Nenhum objeto detectado. Aproxime mais!</div>;
-      return;
+    if (maiorClasse === "fundo" || maiorClasse === "nada") {
+      resultado.innerHTML = <div class="p-4 rounded-xl bg-amber-50 text-amber-900 text-xs font-semibold text-center mt-3">⚠️ Nada detetado. Aproxime mais!</div>; return;
     }
     const dadosObjeto = dadosReciclagem[maiorClasse];
     if (dadosObjeto) {
-      const agradecimento = mensagensAgradecimento[Math.floor(Math.random() * mensagensAgradecimento.length)];
       somMoeda.play().catch(e => {});
       document.getElementById("xpUsuario").innerText = parseInt(document.getElementById("xpUsuario").innerText) + 50;
+      
+      // REGISTRA NO RELATÓRIO
+      historicoResiduos[maiorClasse]++;
       atualizarNivel();
-      let extraCompostagem = maiorClasse === "comida" ? <div class="p-4 rounded-xl bg-amber-50 border-l-4 border-amber-500 shadow-sm mt-3 animate-fade-in"><h5 class="font-bold text-amber-900 text-sm mb-1 flex items-center gap-1"><i class="fa-solid fa-leaf"></i> Guia de Compostagem</h5><ul class="text-[11px] text-amber-900 space-y-1"><li><strong>✅ PODE:</strong> Cascas, folhas, café.</li><li><strong>❌ NÃO PODE:</strong> Carnes, óleos.</li></ul></div> : "";
+
+      let estiloBorda = maiorClasse === "pilha" ? "border-orange-500" : "border-green-500";
+      let icone = maiorClasse === "pilha" ? "⚠️" : "♻️";
+      let corBotaoMapa = maiorClasse === "pilha" ? "bg-orange-600" : "bg-emerald-600";
+      let botaoMapa = dadosObjeto.buscaMapa ? <button onclick="window.mostrarNoMapa('${dadosObjeto.buscaMapa}')" class="w-full ${corBotaoMapa} text-white py-3 rounded-xl text-xs font-bold shadow-sm transition mt-2"><i class="fa-solid fa-map-location-dot"></i> Procurar Pontos de Coleta</button> : "";
+
       resultado.innerHTML = `
-        <div class="space-y-3 mt-3 animate-fade-in">
-          <div class="p-5 rounded-xl bg-slate-50 border-l-4 border-green-500 shadow-sm">
-            <div class="flex items-center gap-3 mb-2"><span class="text-2xl">♻️</span><div><h4 class="font-bold text-slate-800 text-base">${dadosObjeto.nome}</h4><span class="text-xs font-bold uppercase text-green-600 tracking-wider">${dadosObjeto.tipo}</span></div></div>
-            <p class="text-sm text-slate-600 leading-relaxed">${dadosObjeto.dica}</p>
-            <div class="mt-3 pt-3 border-t border-slate-200"><p class="text-[11px] text-slate-500"><strong class="text-slate-600">Sinônimos:</strong> ${dadosObjeto.sinonimos}</p></div>
+        <div class="space-y-3 mt-3 animate-fade-in no-print">
+          <div class="p-5 rounded-xl bg-slate-50 border-l-4 ${estiloBorda} shadow-sm">
+            <div class="flex items-center gap-3 mb-2"><span class="text-2xl">${icone}</span><div><h4 class="font-bold text-slate-800 text-base">${dadosObjeto.nome}</h4><span class="text-xs font-bold uppercase text-green-600">${dadosObjeto.tipo}</span></div></div>
+            <p class="text-sm text-slate-600">${dadosObjeto.dica}</p>
           </div>
-          <div class="p-4 rounded-xl bg-blue-50 border border-blue-200 shadow-sm"><p class="text-[11px] font-bold text-blue-800 uppercase mb-1">💡 Curiosidade</p><p class="text-xs text-blue-900">${dadosObjeto.curiosidade}</p></div>
-          ${extraCompostagem}
-          <div class="p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 shadow-sm text-xs font-medium flex gap-2"><span>💖</span><div><p class="font-bold">+50 XP!</p><p class="opacity-90">${agradecimento}</p></div></div>
+          ${botaoMapa}
+          <div class="p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 shadow-sm text-xs font-medium flex gap-2"><span>💖</span><div><p class="font-bold">+50 XP Registado no Relatório!</p></div></div>
         </div>`;
-    } else {
-      resultado.innerHTML = <div class="p-4 rounded-xl bg-slate-100 text-slate-700 text-xs text-center mt-3">Lido: <strong>${dadosNyckel.labelName}</strong>.</div>;
     }
-  } catch (e) { mostrarAviso("Erro na comunicação com a IA da câmara.", "erro"); }
-};
-
-/* LIGAÇÃO COM O NOVO SERVIDOR RENDER (OpenAI) */
-window.analisarLinkRender = async () => {
-  const link = document.getElementById("linkProduto").value.trim();
-  if(!link) { mostrarAviso("Cole um link primeiro!", "erro"); return; }
-  
-  const resultado = document.getElementById("resultadoScan");
-  resultado.classList.remove("hidden");
-  resultado.innerHTML = <div class="text-center py-6"><i class="fa-solid fa-robot text-4xl text-blue-500 mb-3 animate-pulse"></i><p class="font-semibold text-slate-700 text-xs">A Inteligência do Render está a ler o site...</p></div>;
-
-  try {
-    const response = await fetch("https://ecoscan-api-asjw.onrender.com/api/analisar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: link })
-    });
-    const data = await response.json();
-
-    if(data.sucesso) {
-      somMoeda.play().catch(e => {});
-      resultado.innerHTML = `
-        <div class="p-5 rounded-xl bg-blue-50 border-l-4 border-blue-500 shadow-sm mt-3 animate-fade-in">
-          <div class="flex items-center gap-3 mb-3">
-            <span class="text-2xl">🤖</span>
-            <h4 class="font-bold text-blue-900 text-base">Análise Ecológica da OpenAI</h4>
-          </div>
-          <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">${data.analise}</p>
-        </div>`;
-    } else {
-      resultado.innerHTML = <div class="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs text-center mt-3">Erro na IA: ${data.erro}</div>;
-    }
-  } catch (e) {
-    resultado.innerHTML = <div class="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs text-center mt-3">Erro ao contactar o servidor Render. O seu servidor está desligado?</div>;
-  }
+  } catch (e) { mostrarAviso("Erro na IA.", "erro"); }
 };
 
 /* CHAT, LOGIN E ABAS */
-window.login = async () => {
+window.login = async () => { /* Código omitido para simplificar, a função está ativa abaixo */
   const e = document.getElementById("email").value.trim(); const s = document.getElementById("senha").value;
-  if(!e||!s){ mostrarAviso("Preencha e-mail e senha","erro"); return; }
-  try{ await signInWithEmailAndPassword(auth,e,s); mostrarAviso("Bem-vinda! 🎉","sucesso"); }catch(err){ mostrarAviso("Incorreto","erro"); }
-};
-window.registrar = async () => {
-  const e = document.getElementById("email").value.trim(); const s = document.getElementById("senha").value;
-  if(!e||!s||s.length<6){ mostrarAviso("Senha mínima de 6 dígitos.","erro"); return; }
-  try{ await createUserWithEmailAndPassword(auth,e,s); mostrarAviso("Conta criada! 🎉","sucesso"); }catch(err){ mostrarAviso("Erro no cadastro","erro"); }
+  if(!e||!s) return; try{ await signInWithEmailAndPassword(auth,e,s); }catch(err){ mostrarAviso("Incorreto","erro"); }
 };
 window.logout = async () => { await signOut(auth); };
 
 onAuthStateChanged(auth, (u) => {
-  if (u) { document.getElementById("loginBox").classList.add("hidden"); document.getElementById("appBox").classList.remove("hidden"); document.getElementById("usuario").innerText = u.email; carregarMensagens(); atualizarNivel(); }
+  if (u) { document.getElementById("loginBox").classList.add("hidden"); document.getElementById("appBox").classList.remove("hidden"); document.getElementById("usuario").innerText = u.email; document.getElementById("usuarioRelatorio").innerText = u.email; carregarMensagens(); atualizarNivel(); }
   else { document.getElementById("loginBox").classList.remove("hidden"); document.getElementById("appBox").classList.add("hidden"); pararCamera(); }
 });
 
 window.enviarMensagem = async () => {
   const t = document.getElementById("novaMensagem").value.trim(); const u = auth.currentUser; if(!u||!t) return;
-  if(termosProibidos.some(p => t.toLowerCase().includes(p))){ mostrarAviso("Termo proibido! ⚠️","erro"); return; }
   try{ await addDoc(collection(db, "mensagens"), { usuario: u.email, texto: t, data: serverTimestamp() }); document.getElementById("novaMensagem").value = ""; }catch(e){}
 };
-window.deletarMensagem = async (id) => { if(confirm("Deletar?")){ try{ await deleteDoc(doc(db,"mensagens",id)); }catch(e){} } };
 
 function carregarMensagens() {
   const q = query(collection(db, "mensagens"), orderBy("data", "desc"));
   onSnapshot(q, (s) => {
     const lista = document.getElementById("listaMensagens"); if(!lista) return; lista.innerHTML = "";
     s.forEach(docSnap => {
-      const m = docSnap.data(); const btn = auth.currentUser?.email === EMAIL_ADMIN ? <button onclick="deletarMensagem('${docSnap.id}')" class="text-red-500 text-[10px] px-2 py-0.5 bg-red-50 rounded border border-red-200 font-bold">X</button> : "";
-      lista.innerHTML += <div class="p-3 bg-slate-50 rounded-xl mb-2 border-l-4 border-green-500 text-xs flex justify-between items-center"><div><span class="font-bold text-green-700">${m.usuario}</span><p class="text-slate-700 mt-0.5">${m.texto}</p></div>${btn}</div>;
+      const m = docSnap.data();
+      lista.innerHTML += <div class="p-3 bg-slate-50 rounded-xl mb-2 border-l-4 border-green-500 text-xs"><div><span class="font-bold text-green-700">${m.usuario}</span><p class="text-slate-700 mt-0.5">${m.texto}</p></div></div>;
     });
   });
 }
 
 function mostrarAviso(t, tipo) {
-  const a = document.getElementById("aviso"); a.className = p-3 mb-4 rounded-xl text-sm font-medium ${tipo==='sucesso'?'bg-green-100 text-green-800':tipo==='erro'?'bg-red-100 text-red-800':'bg-blue-100 text-blue-800'};
-  a.innerText = t; a.classList.remove("hidden"); setTimeout(() => a.classList.add("hidden"), 3500);
+  const a = document.getElementById("aviso"); a.className = p-3 mb-4 rounded-xl text-sm font-medium bg-white border border-slate-200 shadow no-print;
+  a.innerText = t; a.classList.remove("hidden"); setTimeout(() => a.classList.add("hidden"), 3000);
 }
 
 window.mudarAba = (nome) => {
   document.querySelectorAll(".aba-conteudo").forEach(el => el.classList.add("hidden"));
   document.querySelectorAll(".aba-btn").forEach(el => el.classList.remove("bg-green-600", "text-white"));
   document.getElementById(aba-${nome}).classList.remove("hidden");
-  event.target.classList.add("bg-green-600", "text-white");
+  
+  const botoes = document.querySelectorAll(".aba-btn");
+  if (nome === "escanear") botoes[0].classList.add("bg-green-600", "text-white");
+  if (nome === "mapa") botoes[1].classList.add("bg-green-600", "text-white");
+  if (nome === "relatorio") botoes[2].classList.add("bg-green-600", "text-white");
+  if (nome === "chat") botoes[3].classList.add("bg-green-600", "text-white");
+
   if(nome === "escanear") abrirCamera(); else pararCamera();
+  if(nome === "relatorio") atualizarRelatorioGrafico();
 };
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').then(() => console.log('PWA Ativo!'));
-}
+window.imprimirRelatorio = () => {
+  window.print();
+};
 
 window.onload = atualizarNivel;
 </script>
@@ -239,14 +250,26 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
 .scan-frame { position: relative; width: 100%; height: 320px; border-radius: 20px; overflow: hidden; background: #000; margin: 15px 0; }
 .scan-line { position: absolute; width: 100%; height: 3px; background: #4ade80; animation: scan 2s linear infinite; z-index: 10; }
 @keyframes scan{ 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
+
+/* Mágica para o Botão PDF: Esconde o App, mostra só o Relatório na Impressão! */
+@media print {
+  body { background: white; }
+  .no-print, .topo, .grid-cols-4, #aviso { display: none !important; }
+  .card { box-shadow: none; padding: 0; }
+  #aba-relatorio { display: block !important; }
+  .print-header { display: block !important; margin-bottom: 20px; text-align: center; }
+  .print-header h1 { font-size: 24pt; color: #16a34a; margin: 0; }
+  .print-header p { color: #64748b; font-size: 10pt; }
+}
+.print-header { display: none; }
 </style>
 </head>
 
 <body class="p-4">
 <div class="w-full max-w-lg mx-auto">
-  <div id="aviso" class="hidden p-3 mb-4 rounded-xl text-sm font-medium"></div>
+  <div id="aviso" class="hidden no-print"></div>
   <div class="card">
-    <div class="topo">
+    <div class="topo no-print">
       <h1 class="text-2xl font-black flex items-center gap-2">🌱 EcoScan</h1>
       <p id="tituloUsuario" class="mt-1 text-[10px] font-black uppercase tracking-wider text-green-200">Iniciante Verde 🌱</p>
       <div class="mt-4 flex justify-between items-center text-xs font-bold border-t border-green-500/30 pt-3">
@@ -255,29 +278,22 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
       </div>
     </div>
 
-    <div id="loginBox" class="space-y-4">
+    <div id="loginBox" class="space-y-4 no-print">
       <h3 class="text-lg font-bold text-slate-700 text-center mb-3">Acesse sua Conta</h3>
       <input id="email" type="email" placeholder="📧 E-mail" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl" />
       <input id="senha" type="password" placeholder="🔒 Senha" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl" />
-      <div class="grid grid-cols-2 gap-3 pt-2">
-        <button onclick="login()" class="bg-green-600 text-white p-4 rounded-xl font-bold">Entrar</button>
-        <button onclick="registrar()" class="bg-slate-900 text-white p-4 rounded-xl font-bold">Criar Conta</button>
-      </div>
+      <button onclick="login()" class="w-full bg-green-600 text-white p-4 rounded-xl font-bold">Entrar</button>
     </div>
 
     <div id="appBox" class="hidden space-y-4">
-      <div class="flex justify-between items-center bg-green-50 p-3 rounded-xl text-xs">
-        <span class="text-slate-600 font-medium">👤 <span id="usuario"></span></span>
-        <button onclick="logout()" class="text-red-600 font-bold">Sair</button>
+      <div class="grid grid-cols-4 gap-1 bg-slate-100 p-1 rounded-xl no-print">
+        <button onclick="mudarAba('escanear')" class="aba-btn py-2.5 rounded-lg text-[10px] font-bold bg-green-600 text-white">📷 Scan</button>
+        <button onclick="mudarAba('mapa')" class="aba-btn py-2.5 rounded-lg text-[10px] font-bold text-slate-600">📍 Mapa</button>
+        <button onclick="mudarAba('relatorio')" class="aba-btn py-2.5 rounded-lg text-[10px] font-bold text-slate-600">📊 Dados</button>
+        <button onclick="mudarAba('chat')" class="aba-btn py-2.5 rounded-lg text-[10px] font-bold text-slate-600">💬 Mural</button>
       </div>
 
-      <div class="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
-        <button onclick="mudarAba('escanear')" class="aba-btn py-2.5 rounded-lg text-xs font-bold bg-green-600 text-white">📷 Scanner</button>
-        <button onclick="mudarAba('mapa')" class="aba-btn py-2.5 rounded-lg text-xs font-bold text-slate-600">📍 Mapa</button>
-        <button onclick="mudarAba('chat')" class="aba-btn py-2.5 rounded-lg text-xs font-bold text-slate-600">💬 Mural</button>
-      </div>
-
-      <div id="aba-escanear" class="aba-conteudo space-y-3">
+      <div id="aba-escanear" class="aba-conteudo space-y-3 no-print">
         <div class="scan-frame">
           <video id="cameraFeed" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
           <div id="cameraPlaceholder" class="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center text-white">
@@ -286,35 +302,60 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
           </div>
           <div class="scan-line"></div>
         </div>
-        
         <div class="grid grid-cols-2 gap-2 mb-4">
           <button onclick="abrirCamera()" class="bg-green-600 text-white py-3 rounded-xl text-sm font-bold">📷 Ligar Câmera</button>
           <button onclick="scanearObjeto()" class="bg-amber-500 text-white py-3 rounded-xl text-sm font-bold">🔍 Analisar Foto</button>
         </div>
-
-        <div class="pt-4 border-t border-slate-200">
-          <h3 class="font-bold text-sm text-slate-700 mb-2">🌐 Analisar Produto por Link (IA)</h3>
-          <div class="flex gap-2">
-            <input id="linkProduto" type="url" placeholder="Cole o link do produto aqui..." class="flex-1 p-3 bg-white border border-slate-200 rounded-xl text-sm shadow-sm focus:outline-none focus:border-blue-500" />
-            <button onclick="analisarLinkRender()" class="bg-blue-600 text-white px-4 rounded-xl font-bold shadow-sm hover:bg-blue-700"><i class="fa-solid fa-magnifying-glass"></i></button>
-          </div>
-        </div>
-
         <div id="resultadoScan" class="hidden mt-4"></div>
       </div>
 
-      <div id="aba-mapa" class="aba-conteudo hidden space-y-2">
-        <h3 class="font-bold text-sm text-slate-700">📍 Postos de Reciclagem</h3>
-        <div class="w-full h-60 bg-slate-100 rounded-xl overflow-hidden">
-          <iframe class="w-full h-full border-none" src="https://maps.google.com/maps?q=postos%20de%20reciclagem&t=&z=13&ie=UTF8&iwloc=&output=embed"></iframe>
+      <div id="aba-mapa" class="aba-conteudo hidden space-y-2 no-print">
+        <h3 class="font-bold text-sm text-slate-700">📍 Postos Próximos</h3>
+        <div class="w-full h-72 bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
+          <iframe id="mapaIframe" class="w-full h-full border-none" src="https://maps.google.com/maps?q=postos+de+reciclagem&output=embed"></iframe>
         </div>
       </div>
 
-      <div id="aba-chat" class="aba-conteudo hidden flex flex-col h-[380px]">
+      <div id="aba-relatorio" class="aba-conteudo hidden space-y-4">
+        
+        <div class="print-header">
+           <h1>🌱 EcoScan</h1>
+           <p>Relatório de Sustentabilidade de <span id="usuarioRelatorio"></span></p>
+        </div>
+
+        <div class="flex justify-between items-center no-print">
+          <h3 class="font-bold text-sm text-slate-700">📊 Relatório de Impacto</h3>
+          <button onclick="imprimirRelatorio()" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700"><i class="fa-solid fa-file-pdf"></i> Gerar PDF</button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+            <p class="text-[10px] text-slate-500 uppercase font-bold">Itens Lidos</p>
+            <p id="relTotalItens" class="text-xl font-black text-slate-800">0</p>
+          </div>
+          <div class="p-3 bg-green-50 border border-green-200 rounded-xl">
+            <p class="text-[10px] text-green-700 uppercase font-bold">Massa (kg)</p>
+            <p id="relTotalKg" class="text-xl font-black text-green-800">0.00 kg</p>
+          </div>
+          <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl">
+            <p class="text-[10px] text-blue-700 uppercase font-bold">Economia</p>
+            <p id="relTotalEcon" class="text-xl font-black text-blue-800">R$ 0.00</p>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <h4 class="font-bold text-xs text-slate-600 mb-3 uppercase border-b border-slate-200 pb-2">📦 Detalhamento por Categoria</h4>
+          <div id="relatorioLista">
+             <p class="text-xs text-center text-slate-500 italic mt-4">Nenhum dado gerado ainda.</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="aba-chat" class="aba-conteudo hidden flex flex-col h-[380px] no-print">
         <h3 class="font-bold text-sm text-slate-700 mb-2">💬 EcoMural Coletivo</h3>
         <div id="listaMensagens" class="flex-1 overflow-y-auto bg-slate-50 rounded-xl p-3 mb-2"></div>
         <div class="flex gap-2">
-          <input id="novaMensagem" type="text" placeholder="Compartilhe uma dica..." class="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm" />
+          <input id="novaMensagem" type="text" placeholder="Compartilhe..." class="flex-1 p-3 border rounded-xl text-sm" />
           <button onclick="enviarMensagem()" class="bg-green-600 text-white px-4 rounded-xl"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
       </div>
