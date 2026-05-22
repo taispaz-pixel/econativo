@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>EcoScan - Inteligência Ambiental</title>
 
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#16a34a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3246/3246310.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
 
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
@@ -24,21 +24,21 @@ import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTim
 window.addEventListener("error", (e) => alert("ALERTA DE ERRO GERAL: " + e.message));
 window.addEventListener("unhandledrejection", (e) => alert("ALERTA DE SISTEMA: " + (e.reason.message || e.reason)));
 
-const firebaseConfig = { 
-  apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw", 
-  authDomain: "ecoscan-96a80.firebaseapp.com", 
-  projectId: "ecoscan-96a80", 
-  storageBucket: "ecoscan-96a80.appspot.com", 
-  messagingSenderId: "532877468700", 
-  appId: "1:532877468700:web:689d25217275313341abd9", 
-  measurementId: "G-ZN2B54CN07" 
+const firebaseConfig = {
+  apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw",
+  authDomain: "ecoscan-96a80.firebaseapp.com",
+  projectId: "ecoscan-96a80",
+  storageBucket: "ecoscan-96a80.appspot.com",
+  messagingSenderId: "532877468700",
+  appId: "1:532877468700:web:689d25217275313341abd9",
+  measurementId: "G-ZN2B54CN07"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const NYCKEL_FUNCTION_ID = "qt82mge0uiwoay8p"; 
+const NYCKEL_FUNCTION_ID = "qt82mge0uiwoay8p";
 const NYCKEL_CLIENT_ID = "u1wgqv728lzvi1xzovisl4tvij1oak7i";
 const NYCKEL_CLIENT_SECRET = "ktiutb8bsjv3yacmcbkeemop80y7ujrndgaoi26dm7z19px76fbzzs3y5tmsd0g9";
 
@@ -60,7 +60,7 @@ function atualizarNivel() {
   if (xp >= 200 && xp < 500) { titulo = "Defensor Eco 🌿"; cor = "text-emerald-300"; }
   else if (xp >= 500 && xp < 1000) { titulo = "Guardião da Natureza 🌳"; cor = "text-yellow-300"; }
   else if (xp >= 1000) { titulo = "Mestre Sustentável 🌍"; cor = "text-amber-400"; }
-  document.getElementById("tituloUsuario").innerText = titulo; 
+  document.getElementById("tituloUsuario").innerText = titulo;
   document.getElementById("tituloUsuario").className = mt-1 text-[10px] font-black uppercase tracking-wider ${cor};
   atualizarRelatorioGrafico();
 }
@@ -94,7 +94,7 @@ document.getElementById("btnEntrar").addEventListener("click", async (e) => {
   const email = document.getElementById("email").value.trim();
   const senha = document.getElementById("senha").value;
 
-  if(!email || !senha) {
+  if(!email ||!senha) {
     alert("Por favor, preencha o seu e-mail e a senha!");
     return;
   }
@@ -114,7 +114,7 @@ document.getElementById("btnCriarConta").addEventListener("click", async (e) => 
   const email = document.getElementById("email").value.trim();
   const senha = document.getElementById("senha").value;
 
-  if(!email || !senha || senha.length < 6) {
+  if(!email ||!senha || senha.length < 6) {
     alert("Atenção: A senha precisa ter pelo menos 6 números ou letras.");
     return;
   }
@@ -135,7 +135,7 @@ window.mudarAba = (nome) => {
   document.querySelectorAll(".aba-conteudo").forEach(el => el.classList.add("hidden"));
   document.querySelectorAll(".aba-btn").forEach(el => el.classList.remove("bg-green-600", "text-white"));
   document.getElementById(aba-${nome}).classList.remove("hidden");
-  
+
   const botoes = document.querySelectorAll(".aba-btn");
   if (nome === "escanear") botoes[0].classList.add("bg-green-600", "text-white");
   if (nome === "mapa") botoes[1].classList.add("bg-green-600", "text-white");
@@ -150,35 +150,35 @@ window.imprimirRelatorio = () => { window.print(); };
 window.logout = async () => { await signOut(auth); };
 
 onAuthStateChanged(auth, (u) => {
-  if (u) { 
-    document.getElementById("loginBox").classList.add("hidden"); 
-    document.getElementById("appBox").classList.remove("hidden"); 
-    document.getElementById("usuario").innerText = u.email; 
-    document.getElementById("usuarioRelatorio").innerText = u.email; 
-    carregarMensagens(); 
-    atualizarNivel(); 
-  } else { 
-    document.getElementById("loginBox").classList.remove("hidden"); 
-    document.getElementById("appBox").classList.add("hidden"); 
-    if(window.pararCamera) window.pararCamera(); 
+  if (u) {
+    document.getElementById("loginBox").classList.add("hidden");
+    document.getElementById("appBox").classList.remove("hidden");
+    document.getElementById("usuario").innerText = u.email;
+    document.getElementById("usuarioRelatorio").innerText = u.email;
+    carregarMensagens();
+    atualizarNivel();
+  } else {
+    document.getElementById("loginBox").classList.remove("hidden");
+    document.getElementById("appBox").classList.add("hidden");
+    if(window.pararCamera) window.pararCamera();
   }
 });
 
 window.enviarMensagem = async () => {
-  const t = document.getElementById("novaMensagem").value.trim(); 
-  const u = auth.currentUser; 
+  const t = document.getElementById("novaMensagem").value.trim();
+  const u = auth.currentUser;
   if(!u||!t) return;
-  try{ 
-    await addDoc(collection(db, "mensagens"), { usuario: u.email, texto: t, data: serverTimestamp() }); 
-    document.getElementById("novaMensagem").value = ""; 
+  try{
+    await addDoc(collection(db, "mensagens"), { usuario: u.email, texto: t, data: serverTimestamp() });
+    document.getElementById("novaMensagem").value = "";
   } catch(e){ alert("Erro ao enviar mensagem no chat!"); }
 };
 
 function carregarMensagens() {
   const q = query(collection(db, "mensagens"), orderBy("data", "desc"));
   onSnapshot(q, (s) => {
-    const lista = document.getElementById("listaMensagens"); 
-    if(!lista) return; 
+    const lista = document.getElementById("listaMensagens");
+    if(!lista) return;
     lista.innerHTML = "";
     s.forEach(docSnap => {
       const m = docSnap.data();
@@ -235,10 +235,10 @@ window.scanearObjeto = async () => {
       method: "POST", headers: { 'Authorization': Bearer ${token} }, body: formData
     });
     const dadosNyckel = await resposta.json();
-    if (!dadosNyckel || !dadosNyckel.labelName) throw new Error("Sem resposta.");
+    if (!dadosNyckel ||!dadosNyckel.labelName) throw new Error("Sem resposta.");
     let classeLida = dadosNyckel.labelName.toLowerCase().trim();
     let maiorClasse = classeLida;
-    
+
     if(classeLida.includes("comida") || classeLida.includes("organico")) maiorClasse = "comida";
     else if(classeLida.includes("papel")) maiorClasse = "papelao";
     else if(classeLida.includes("plastico") || classeLida.includes("pet")) maiorClasse = "plastico";
@@ -256,10 +256,10 @@ window.scanearObjeto = async () => {
       historicoResiduos[maiorClasse]++;
       atualizarNivel();
 
-      let estiloBorda = maiorClasse === "pilha" ? "border-orange-500" : "border-green-500";
-      let icone = maiorClasse === "pilha" ? "⚠️" : "♻️";
-      let corBotaoMapa = maiorClasse === "pilha" ? "bg-orange-600" : "bg-emerald-600";
-      let botaoMapa = dadosObjeto.buscaMapa ? <button type="button" onclick="window.mostrarNoMapa('${dadosObjeto.buscaMapa}')" class="w-full ${corBotaoMapa} text-white py-3 rounded-xl text-xs font-bold shadow-sm transition mt-2"><i class="fa-solid fa-map-location-dot"></i> Encontrar Pontos de Coleta</button> : "";
+      let estiloBorda = maiorClasse === "pilha"? "border-orange-500" : "border-green-500";
+      let icone = maiorClasse === "pilha"? "⚠️" : "♻️";
+      let corBotaoMapa = maiorClasse === "pilha"? "bg-orange-600" : "bg-emerald-600";
+      let botaoMapa = dadosObjeto.buscaMapa? <button type="button" onclick="window.mostrarNoMapa('${dadosObjeto.buscaMapa}')" class="w-full ${corBotaoMapa} text-white py-3 rounded-xl text-xs font-bold shadow-sm transition mt-2"><i class="fa-solid fa-map-location-dot"></i> Encontrar Pontos de Coleta</button> : "";
 
       resultado.innerHTML = `
         <div class="space-y-3 mt-3 animate-fade-in no-print">
@@ -309,12 +309,12 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
 
 @media print {
   body { background: white; }
-  .no-print, .topo, .grid-cols-4 { display: none !important; }
-  .card { box-shadow: none; padding: 0; }
-  #aba-relatorio { display: block !important; }
-  .print-header { display: block !important; margin-bottom: 20px; text-align: center; }
-  .print-header h1 { font-size: 24pt; color: #16a34a; margin: 0; }
-  .print-header p { color: #64748b; font-size: 10pt; }
+ .no-print,.topo,.grid-cols-4 { display: none!important; }
+ .card { box-shadow: none; padding: 0; }
+  #aba-relatorio { display: block!important; }
+ .print-header { display: block!important; margin-bottom: 20px; text-align: center; }
+ .print-header h1 { font-size: 24pt; color: #16a34a; margin: 0; }
+ .print-header p { color: #64748b; font-size: 10pt; }
 }
 .print-header { display: none; }
 </style>
