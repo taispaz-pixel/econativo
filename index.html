@@ -14,271 +14,9 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-const firebaseConfig = { apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw", authDomain: "ecoscan-96a80.firebaseapp.com", projectId: "ecoscan-96a80", storageBucket: "ecoscan-96a80.appspot.com", messagingSenderId: "532877468700", appId: "1:532877468700:web:689d25217275313341abd9", measurementId: "G-ZN2B54CN07" };
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-const EMAIL_ADMIN = "tais.paz@live.com";
-
-// Configuração Nyckel
-const NYCKEL_FUNCTION_ID = "qt82mge0uiwoay8p"; 
-const NYCKEL_CLIENT_ID = "u1wgqv728lzvi1xzovisl4tvij1oak7i";
-const NYCKEL_CLIENT_SECRET = "ktiutb8bsjv3yacmcbkeemop80y7ujrndgaoi26dm7z19px76fbzzs3y5tmsd0g9";
-
-/* BANCO DE DADOS E PESOS ESTIMADOS */
-const dadosReciclagem = {
-  "comida": { nome: "Resíduo Orgânico 🌱", tipo: "Lixeira Marrom 🟤", dica: "Reserve para compostagem.", pesoKg: 0.250, custoPorKg: 1.50, sinonimos: "Restos, cascas, café.", curiosidade: "Pode reduzir o lixo em 50%!", buscaMapa: "compostagem" },
-  "papelao": { nome: "Papelão / Papel ♻️", tipo: "Lixeira Azul 🔵", dica: "Dobre para economizar espaço.", pesoKg: 0.200, custoPorKg: 0.80, sinonimos: "Caixas, revistas, jornais.", curiosidade: "Salva árvores de serem cortadas!", buscaMapa: "reciclagem+de+papel" },
-  "plastico": { nome: "Plástico / Pet ♻️", tipo: "Lixeira Vermelha 🔴", dica: "Lave o interior antes.", pesoKg: 0.050, custoPorKg: 2.00, sinonimos: "Garrafas PET, potes, sacolas.", curiosidade: "Demoraria 400 anos na natureza!", buscaMapa: "reciclagem+de+plastico" },
-  "vidro": { nome: "Vidro ♻️", tipo: "Lixeira Verde 🟢", dica: "Embale se estiver quebrado.", pesoKg: 0.300, custoPorKg: 0.30, sinonimos: "Garrafas, copos, frascos.", curiosidade: "É 100% reciclável infinitamente!", buscaMapa: "reciclagem+de+vidro" },
-  "aluminio": { nome: "Alumínio / Metal ♻️", tipo: "Lixeira Amarela 🟡", dica: "Amasse bem as latinhas.", pesoKg: 0.015, custoPorKg: 6.50, sinonimos: "Latinhas, tampas de metal.", curiosidade: "Economiza muita energia!", buscaMapa: "reciclagem+de+metal" },
-  "pilha": { nome: "Pilhas e Baterias ⚠️", tipo: "Lixeira Laranja 🟠", dica: "Entregue em pontos de coleta.", pesoKg: 0.025, custoPorKg: 10.00, sinonimos: "Pilhas AA, baterias.", curiosidade: "Contêm metais pesados tóxicos!", buscaMapa: "descarte+de+pilhas+e+baterias" }
-};
-
-let historicoResiduos = { comida: 0, papelao: 0, plastico: 0, vidro: 0, aluminio: 0, pilha: 0 };
-const somMoeda = new Audio("https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3");
-
-function atualizarNivel() {
-  const xp = parseInt(document.getElementById("xpUsuario").innerText);
-  let titulo = "Iniciante Verde 🌱"; let cor = "text-green-200";
-  if (xp >= 200 && xp < 500) { titulo = "Defensor Eco 🌿"; cor = "text-emerald-300"; }
-  else if (xp >= 500 && xp < 1000) { titulo = "Guardião da Natureza 🌳"; cor = "text-yellow-300"; }
-  else if (xp >= 1000) { titulo = "Mestre Sustentável 🌍"; cor = "text-amber-400"; }
-  document.getElementById("tituloUsuario").innerText = titulo; 
-  document.getElementById("tituloUsuario").className = mt-1 text-[10px] font-black uppercase tracking-wider ${cor};
-  atualizarRelatorioGrafico();
-}
-
-window.atualizarRelatorioGrafico = () => {
-  let totalItens = 0; let totalKg = 0; let totalEconomia = 0;
-  let htmlDetalhes = "";
-
-  for (const [chave, qtd] of Object.entries(historicoResiduos)) {
-    totalItens += qtd;
-    let pesoTotalClass = qtd * dadosReciclagem[chave].pesoKg;
-    let econTotalClass = pesoTotalClass * dadosReciclagem[chave].custoPorKg;
-    totalKg += pesoTotalClass;
-    totalEconomia += econTotalClass;
-
-    if (qtd > 0) {
-      htmlDetalhes += `
-        <div class="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 mb-2 shadow-sm">
-          <div><p class="font-bold text-sm text-slate-800">${dadosReciclagem[chave].nome}</p><p class="text-xs text-slate-500">${qtd} itens lidos</p></div>
-          <div class="text-right"><p class="font-bold text-green-700">${pesoTotalClass.toFixed(3)} kg</p><p class="text-xs font-medium text-slate-500">€ ${econTotalClass.toFixed(2)}</p></div>
-        </div>`;
-    }
-  }
-
-  if (totalItens === 0) { htmlDetalhes = <p class="text-xs text-center text-slate-500 italic mt-4">Nenhum dado gerado ainda.</p>; }
-
-  document.getElementById("relTotalItens").innerText = totalItens;
-  document.getElementById("relTotalKg").innerText = totalKg.toFixed(2) + " kg";
-  document.getElementById("relTotalEcon").innerText = "€ " + totalEconomia.toFixed(2);
-  document.getElementById("relatorioLista").innerHTML = htmlDetalhes;
-};
-
-let streamAtual = null;
-window.abrirCamera = async () => {
-  const video = document.getElementById("cameraFeed");
-  const placeholder = document.getElementById("cameraPlaceholder");
-  try {
-    streamAtual = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-    video.srcObject = streamAtual; video.classList.remove("hidden"); placeholder.classList.add("hidden");
-  } catch (err) { mostrarAviso("Permita o acesso à câmara.", "erro"); }
-};
-
-window.pararCamera = () => {
-  if(streamAtual) {
-    streamAtual.getTracks().forEach(t => t.stop());
-    document.getElementById("cameraFeed").classList.add("hidden");
-    document.getElementById("cameraPlaceholder").classList.remove("hidden");
-    streamAtual = null;
-  }
-};
-
-window.mostrarNoMapa = (termoBusca) => {
-  document.getElementById("mapaIframe").src = https://maps.google.com/maps?q=$${termoBusca}&output=embed;
-  window.mudarAba('mapa');
-};
-
-async function getNyckelToken() {
-  const response = await fetch('https://www.nyckel.com/connect/token', {
-    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: grant_type=client_credentials&client_id=${NYCKEL_CLIENT_ID}&client_secret=${NYCKEL_CLIENT_SECRET}
-  });
-  const data = await response.json(); return data.access_token;
-}
-
-window.scanearObjeto = async () => {
-  const resultado = document.getElementById("resultadoScan");
-  resultado.classList.remove("hidden");
-  resultado.innerHTML = <div class="text-center py-6"><i class="fa-solid fa-bolt text-4xl text-green-500 mb-3 animate-bounce"></i><p class="font-semibold text-slate-700 text-xs">A analisar...</p></div>;
-  const video = document.getElementById("cameraFeed");
-  try {
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-    canvas.getContext("2d").drawImage(video, 0, 0);
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
-    const token = await getNyckelToken();
-    const formData = new FormData(); formData.append('data', blob, 'image.jpg');
-    const resposta = await fetch(https://www.nyckel.com/v1/functions/${NYCKEL_FUNCTION_ID}/invoke, {
-      method: "POST", headers: { 'Authorization': Bearer ${token} }, body: formData
-    });
-    const dadosNyckel = await resposta.json();
-    if (!dadosNyckel || !dadosNyckel.labelName) throw new Error("Sem resposta.");
-    let classeLida = dadosNyckel.labelName.toLowerCase().trim();
-    let maiorClasse = classeLida;
-    
-    if(classeLida.includes("comida") || classeLida.includes("organico")) maiorClasse = "comida";
-    else if(classeLida.includes("papel")) maiorClasse = "papelao";
-    else if(classeLida.includes("plastico") || classeLida.includes("pet")) maiorClasse = "plastico";
-    else if(classeLida.includes("vidro")) maiorClasse = "vidro";
-    else if(classeLida.includes("aluminio") || classeLida.includes("metal") || classeLida.includes("lata")) maiorClasse = "aluminio";
-    else if(classeLida.includes("pilha") || classeLida.includes("bateria")) maiorClasse = "pilha";
-
-    if (maiorClasse === "fundo" || maiorClasse === "nada") {
-      resultado.innerHTML = <div class="p-4 rounded-xl bg-amber-50 text-amber-900 text-xs font-semibold text-center mt-3">⚠️ Nada detetado. Aproxime mais!</div>; return;
-    }
-    const dadosObjeto = dadosReciclagem[maiorClasse];
-    if (dadosObjeto) {
-      somMoeda.play().catch(e => {});
-      document.getElementById("xpUsuario").innerText = parseInt(document.getElementById("xpUsuario").innerText) + 50;
-      historicoResiduos[maiorClasse]++;
-      atualizarNivel();
-
-      let estiloBorda = maiorClasse === "pilha" ? "border-orange-500" : "border-green-500";
-      let icone = maiorClasse === "pilha" ? "⚠️" : "♻️";
-      let corBotaoMapa = maiorClasse === "pilha" ? "bg-orange-600" : "bg-emerald-600";
-      let botaoMapa = dadosObjeto.buscaMapa ? <button onclick="window.mostrarNoMapa('${dadosObjeto.buscaMapa}')" class="w-full ${corBotaoMapa} text-white py-3 rounded-xl text-xs font-bold shadow-sm transition mt-2"><i class="fa-solid fa-map-location-dot"></i> Pontos de Recolha</button> : "";
-
-      resultado.innerHTML = `
-        <div class="space-y-3 mt-3 animate-fade-in no-print">
-          <div class="p-5 rounded-xl bg-slate-50 border-l-4 ${estiloBorda} shadow-sm">
-            <div class="flex items-center gap-3 mb-2"><span class="text-2xl">${icone}</span><div><h4 class="font-bold text-slate-800 text-base">${dadosObjeto.nome}</h4><span class="text-xs font-bold uppercase text-green-600">${dadosObjeto.tipo}</span></div></div>
-            <p class="text-sm text-slate-600">${dadosObjeto.dica}</p>
-          </div>
-          ${botaoMapa}
-        </div>`;
-    }
-  } catch (e) { mostrarAviso("Erro na IA.", "erro"); }
-};
-
-window.analisarLinkRender = async () => {
-  const link = document.getElementById("linkProduto").value.trim();
-  if(!link) { mostrarAviso("Cole um link primeiro!", "erro"); return; }
-  const resultado = document.getElementById("resultadoScan");
-  resultado.classList.remove("hidden");
-  resultado.innerHTML = <div class="text-center py-6"><i class="fa-solid fa-robot text-4xl text-blue-500 mb-3 animate-pulse"></i><p class="font-semibold text-slate-700 text-xs">A analisar o site...</p></div>;
-  try {
-    const response = await fetch("https://ecoscan-api-asjw.onrender.com/api/analisar", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: link })
-    });
-    const data = await response.json();
-    if(data.sucesso) {
-      somMoeda.play().catch(e => {});
-      resultado.innerHTML = `
-        <div class="p-5 rounded-xl bg-blue-50 border-l-4 border-blue-500 shadow-sm mt-3 animate-fade-in">
-          <div class="flex items-center gap-3 mb-3"><span class="text-2xl">🤖</span><h4 class="font-bold text-blue-900 text-base">Análise da OpenAI</h4></div>
-          <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">${data.analise}</p>
-        </div>`;
-    } else { resultado.innerHTML = <div class="p-4 bg-red-50 text-red-800 text-xs text-center mt-3">Erro: ${data.erro}</div>; }
-  } catch (e) { resultado.innerHTML = <div class="p-4 bg-red-50 text-red-800 text-xs text-center mt-3">Servidor Render Desligado.</div>; }
-};
-
-/* --- FUNÇÕES DE LOGIN COM DETEÇÃO DE ERROS ATIVADA --- */
-window.login = async () => {
-  const e = document.getElementById("email").value.trim(); 
-  const s = document.getElementById("senha").value;
-  if(!e||!s){ mostrarAviso("Preencha e-mail e senha!","erro"); return; }
-  
-  try { 
-    mostrarAviso("A verificar os dados... ⏳", "sucesso");
-    await signInWithEmailAndPassword(auth, e, s); 
-  } catch(err) { 
-    // AGORA O ERRO VAI APARECER NO ECRÃ
-    mostrarAviso("ERRO: " + err.code, "erro"); 
-  }
-};
-
-window.registrar = async () => {
-  const e = document.getElementById("email").value.trim(); 
-  const s = document.getElementById("senha").value;
-  if(!e||!s||s.length<6){ mostrarAviso("Preencha tudo! A senha precisa de 6 caracteres.","erro"); return; }
-  
-  try { 
-    mostrarAviso("A criar a conta... ⏳", "sucesso");
-    await createUserWithEmailAndPassword(auth, e, s); 
-  } catch(err) { 
-    // AGORA O ERRO VAI APARECER NO ECRÃ
-    mostrarAviso("ERRO: " + err.code, "erro"); 
-  }
-};
-
-window.logout = async () => { await signOut(auth); };
-
-onAuthStateChanged(auth, (u) => {
-  if (u) { 
-    document.getElementById("loginBox").classList.add("hidden"); 
-    document.getElementById("appBox").classList.remove("hidden"); 
-    document.getElementById("usuario").innerText = u.email; 
-    document.getElementById("usuarioRelatorio").innerText = u.email; 
-    carregarMensagens(); 
-    atualizarNivel(); 
-  } else { 
-    document.getElementById("loginBox").classList.remove("hidden"); 
-    document.getElementById("appBox").classList.add("hidden"); 
-    pararCamera(); 
-  }
-});
-
-window.enviarMensagem = async () => {
-  const t = document.getElementById("novaMensagem").value.trim(); const u = auth.currentUser; if(!u||!t) return;
-  try{ await addDoc(collection(db, "mensagens"), { usuario: u.email, texto: t, data: serverTimestamp() }); document.getElementById("novaMensagem").value = ""; }catch(e){}
-};
-
-function carregarMensagens() {
-  const q = query(collection(db, "mensagens"), orderBy("data", "desc"));
-  onSnapshot(q, (s) => {
-    const lista = document.getElementById("listaMensagens"); if(!lista) return; lista.innerHTML = "";
-    s.forEach(docSnap => {
-      const m = docSnap.data();
-      lista.innerHTML += <div class="p-3 bg-slate-50 rounded-xl mb-2 border-l-4 border-green-500 text-xs"><div><span class="font-bold text-green-700">${m.usuario}</span><p class="text-slate-700 mt-0.5">${m.texto}</p></div></div>;
-    });
-  });
-}
-
-function mostrarAviso(texto, tipo) {
-  const aviso = document.getElementById("aviso"); 
-  aviso.className = p-4 mb-4 rounded-xl text-sm font-bold shadow-md transition-all ${tipo==='sucesso'?'bg-blue-100 text-blue-800 border-2 border-blue-300':'bg-red-100 text-red-800 border-2 border-red-500'};
-  aviso.innerText = texto; 
-  aviso.classList.remove("hidden"); 
-  setTimeout(() => aviso.classList.add("hidden"), 5000);
-}
-
-window.mudarAba = (nome) => {
-  document.querySelectorAll(".aba-conteudo").forEach(el => el.classList.add("hidden"));
-  document.querySelectorAll(".aba-btn").forEach(el => el.classList.remove("bg-green-600", "text-white"));
-  document.getElementById(aba-${nome}).classList.remove("hidden");
-  
-  const botoes = document.querySelectorAll(".aba-btn");
-  if (nome === "escanear") botoes[0].classList.add("bg-green-600", "text-white");
-  if (nome === "mapa") botoes[1].classList.add("bg-green-600", "text-white");
-  if (nome === "relatorio") botoes[2].classList.add("bg-green-600", "text-white");
-  if (nome === "chat") botoes[3].classList.add("bg-green-600", "text-white");
-
-  if(nome === "escanear") abrirCamera(); else pararCamera();
-  if(nome === "relatorio") atualizarRelatorioGrafico();
-};
-
-window.imprimirRelatorio = () => { window.print(); };
-window.onload = atualizarNivel;
-</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
 <style>
 * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
@@ -364,7 +102,7 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
       <div id="aba-mapa" class="aba-conteudo hidden space-y-2 no-print">
         <h3 class="font-bold text-sm text-slate-700">📍 Postos Próximos</h3>
         <div class="w-full h-72 bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
-          <iframe id="mapaIframe" class="w-full h-full border-none" src="https://maps.google.com/maps?q=postos+de+reciclagem&output=embed"></iframe>
+          <iframe id="mapaIframe" class="w-full h-full border-none" src="https://maps.google.com/maps?q=reciclagem&output=embed"></iframe>
         </div>
       </div>
 
@@ -388,7 +126,7 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
           </div>
           <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl">
             <p class="text-[10px] text-blue-700 uppercase font-bold">Econ.</p>
-            <p id="relTotalEcon" class="text-xl font-black text-blue-800">€ 0.00</p>
+            <p id="relTotalEcon" class="text-xl font-black text-blue-800">R$ 0.00</p>
           </div>
         </div>
         <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
@@ -411,5 +149,283 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
     </div>
   </div>
 </div>
+
+<script>
+// Alarme de Erros!
+window.onerror = function(msg, url, line) {
+  alert("ALERTA DE ERRO: " + msg + "\n(Linha: " + line + ")");
+};
+
+// 1. Iniciar Firebase
+const firebaseConfig = { 
+  apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw", 
+  authDomain: "ecoscan-96a80.firebaseapp.com", 
+  projectId: "ecoscan-96a80", 
+  storageBucket: "ecoscan-96a80.appspot.com", 
+  messagingSenderId: "532877468700", 
+  appId: "1:532877468700:web:689d25217275313341abd9", 
+  measurementId: "G-ZN2B54CN07" 
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const EMAIL_ADMIN = "tais.paz@live.com";
+
+// 2. Variáveis de Nyckel e Lixo
+const NYCKEL_FUNCTION_ID = "qt82mge0uiwoay8p"; 
+const NYCKEL_CLIENT_ID = "u1wgqv728lzvi1xzovisl4tvij1oak7i";
+const NYCKEL_CLIENT_SECRET = "ktiutb8bsjv3yacmcbkeemop80y7ujrndgaoi26dm7z19px76fbzzs3y5tmsd0g9";
+
+const dadosReciclagem = {
+  "comida": { nome: "Resíduo Orgânico 🌱", tipo: "Lixeira Marrom 🟤", dica: "Reserve para compostagem.", pesoKg: 0.250, custoPorKg: 1.50, sinonimos: "Restos, cascas, café.", curiosidade: "Pode reduzir o lixo em 50%!", buscaMapa: "compostagem" },
+  "papelao": { nome: "Papelão / Papel ♻️", tipo: "Lixeira Azul 🔵", dica: "Dobre para economizar espaço.", pesoKg: 0.200, custoPorKg: 0.80, sinonimos: "Caixas, revistas, jornais.", curiosidade: "Salva árvores de serem cortadas!", buscaMapa: "reciclagem+de+papel" },
+  "plastico": { nome: "Plástico / Pet ♻️", tipo: "Lixeira Vermelha 🔴", dica: "Lave o interior antes.", pesoKg: 0.050, custoPorKg: 2.00, sinonimos: "Garrafas PET, potes, sacolas.", curiosidade: "Demoraria 400 anos na natureza!", buscaMapa: "reciclagem+de+plastico" },
+  "vidro": { nome: "Vidro ♻️", tipo: "Lixeira Verde 🟢", dica: "Embale se estiver quebrado.", pesoKg: 0.300, custoPorKg: 0.30, sinonimos: "Garrafas, copos, frascos.", curiosidade: "É 100% reciclável infinitamente!", buscaMapa: "reciclagem+de+vidro" },
+  "aluminio": { nome: "Alumínio / Metal ♻️", tipo: "Lixeira Amarela 🟡", dica: "Amasse bem as latinhas.", pesoKg: 0.015, custoPorKg: 6.50, sinonimos: "Latinhas, tampas de metal.", curiosidade: "Economiza muita energia!", buscaMapa: "reciclagem+de+metal" },
+  "pilha": { nome: "Pilhas e Baterias ⚠️", tipo: "Lixeira Laranja 🟠", dica: "Entregue em pontos de coleta.", pesoKg: 0.025, custoPorKg: 10.00, sinonimos: "Pilhas AA, baterias.", curiosidade: "Contêm metais pesados tóxicos!", buscaMapa: "descarte+de+pilhas+e+baterias" }
+};
+
+let historicoResiduos = { comida: 0, papelao: 0, plastico: 0, vidro: 0, aluminio: 0, pilha: 0 };
+const somMoeda = new Audio("https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3");
+
+// 3. Funções Visuais
+function mostrarAviso(texto, tipo) {
+  const aviso = document.getElementById("aviso"); 
+  aviso.className = p-4 mb-4 rounded-xl text-sm font-bold shadow-md transition-all ${tipo==='sucesso'?'bg-blue-100 text-blue-800 border-2 border-blue-300':'bg-red-100 text-red-800 border-2 border-red-500'};
+  aviso.innerText = texto; 
+  aviso.classList.remove("hidden"); 
+  setTimeout(() => aviso.classList.add("hidden"), 4000);
+}
+
+function atualizarNivel() {
+  const xp = parseInt(document.getElementById("xpUsuario").innerText);
+  let titulo = "Iniciante Verde 🌱"; let cor = "text-green-200";
+  if (xp >= 200 && xp < 500) { titulo = "Defensor Eco 🌿"; cor = "text-emerald-300"; }
+  else if (xp >= 500 && xp < 1000) { titulo = "Guardião da Natureza 🌳"; cor = "text-yellow-300"; }
+  else if (xp >= 1000) { titulo = "Mestre Sustentável 🌍"; cor = "text-amber-400"; }
+  document.getElementById("tituloUsuario").innerText = titulo; 
+  document.getElementById("tituloUsuario").className = mt-1 text-[10px] font-black uppercase tracking-wider ${cor};
+  atualizarRelatorioGrafico();
+}
+
+function atualizarRelatorioGrafico() {
+  let totalItens = 0; let totalKg = 0; let totalEconomia = 0;
+  let htmlDetalhes = "";
+  for (const [chave, qtd] of Object.entries(historicoResiduos)) {
+    totalItens += qtd;
+    let pesoTotalClass = qtd * dadosReciclagem[chave].pesoKg;
+    let econTotalClass = pesoTotalClass * dadosReciclagem[chave].custoPorKg;
+    totalKg += pesoTotalClass; totalEconomia += econTotalClass;
+    if (qtd > 0) {
+      htmlDetalhes += `
+        <div class="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 mb-2 shadow-sm">
+          <div><p class="font-bold text-sm text-slate-800">${dadosReciclagem[chave].nome}</p><p class="text-xs text-slate-500">${qtd} itens lidos</p></div>
+          <div class="text-right"><p class="font-bold text-green-700">${pesoTotalClass.toFixed(3)} kg</p><p class="text-xs font-medium text-slate-500">R$ ${econTotalClass.toFixed(2)}</p></div>
+        </div>`;
+    }
+  }
+  if (totalItens === 0) { htmlDetalhes = <p class="text-xs text-center text-slate-500 italic mt-4">Nenhum dado gerado ainda.</p>; }
+  document.getElementById("relTotalItens").innerText = totalItens;
+  document.getElementById("relTotalKg").innerText = totalKg.toFixed(2) + " kg";
+  document.getElementById("relTotalEcon").innerText = "R$ " + totalEconomia.toFixed(2);
+  document.getElementById("relatorioLista").innerHTML = htmlDetalhes;
+}
+
+function mudarAba(nome) {
+  document.querySelectorAll(".aba-conteudo").forEach(el => el.classList.add("hidden"));
+  document.querySelectorAll(".aba-btn").forEach(el => el.classList.remove("bg-green-600", "text-white"));
+  document.getElementById(aba-${nome}).classList.remove("hidden");
+  
+  const botoes = document.querySelectorAll(".aba-btn");
+  if (nome === "escanear") botoes[0].classList.add("bg-green-600", "text-white");
+  if (nome === "mapa") botoes[1].classList.add("bg-green-600", "text-white");
+  if (nome === "relatorio") botoes[2].classList.add("bg-green-600", "text-white");
+  if (nome === "chat") botoes[3].classList.add("bg-green-600", "text-white");
+
+  if(nome === "escanear") abrirCamera(); else pararCamera();
+  if(nome === "relatorio") atualizarRelatorioGrafico();
+}
+
+function imprimirRelatorio() { window.print(); }
+
+// 4. AUTENTICAÇÃO (LOGIN/REGISTO)
+async function login() {
+  const e = document.getElementById("email").value.trim(); 
+  const s = document.getElementById("senha").value;
+  if(!e||!s){ mostrarAviso("Preencha e-mail e senha!","erro"); return; }
+  try { 
+    mostrarAviso("A aceder... ⏳", "sucesso");
+    await auth.signInWithEmailAndPassword(e, s); 
+  } catch(err) { 
+    mostrarAviso("ERRO: E-mail ou senha inválidos.", "erro"); 
+  }
+}
+
+async function registrar() {
+  const e = document.getElementById("email").value.trim(); 
+  const s = document.getElementById("senha").value;
+  if(!e||!s||s.length<6){ mostrarAviso("A senha precisa de pelo menos 6 números/letras.","erro"); return; }
+  try { 
+    mostrarAviso("A criar conta... ⏳", "sucesso");
+    await auth.createUserWithEmailAndPassword(e, s); 
+  } catch(err) { 
+    mostrarAviso("ERRO: " + err.message, "erro"); 
+  }
+}
+
+async function logout() { await auth.signOut(); }
+
+auth.onAuthStateChanged((u) => {
+  if (u) { 
+    document.getElementById("loginBox").classList.add("hidden"); 
+    document.getElementById("appBox").classList.remove("hidden"); 
+    document.getElementById("usuario").innerText = u.email; 
+    document.getElementById("usuarioRelatorio").innerText = u.email; 
+    carregarMensagens(); 
+    atualizarNivel(); 
+  } else { 
+    document.getElementById("loginBox").classList.remove("hidden"); 
+    document.getElementById("appBox").classList.add("hidden"); 
+    pararCamera(); 
+  }
+});
+
+// 5. MURAL (MENSAGENS)
+async function enviarMensagem() {
+  const t = document.getElementById("novaMensagem").value.trim(); 
+  const u = auth.currentUser; 
+  if(!u||!t) return;
+  try{ 
+    await db.collection("mensagens").add({ 
+      usuario: u.email, texto: t, data: firebase.firestore.FieldValue.serverTimestamp() 
+    }); 
+    document.getElementById("novaMensagem").value = ""; 
+  } catch(e){ alert("Erro ao enviar!"); }
+}
+
+function carregarMensagens() {
+  db.collection("mensagens").orderBy("data", "desc").onSnapshot((snapshot) => {
+    const lista = document.getElementById("listaMensagens"); 
+    if(!lista) return; 
+    lista.innerHTML = "";
+    snapshot.forEach(docSnap => {
+      const m = docSnap.data();
+      lista.innerHTML += <div class="p-3 bg-slate-50 rounded-xl mb-2 border-l-4 border-green-500 text-xs"><div><span class="font-bold text-green-700">${m.usuario}</span><p class="text-slate-700 mt-0.5">${m.texto}</p></div></div>;
+    });
+  });
+}
+
+// 6. CÂMARA & I.A.
+let streamAtual = null;
+async function abrirCamera() {
+  const video = document.getElementById("cameraFeed");
+  const placeholder = document.getElementById("cameraPlaceholder");
+  try {
+    streamAtual = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    video.srcObject = streamAtual; video.classList.remove("hidden"); placeholder.classList.add("hidden");
+  } catch (err) { mostrarAviso("Sem permissão para câmara.", "erro"); }
+}
+
+function pararCamera() {
+  if(streamAtual) {
+    streamAtual.getTracks().forEach(t => t.stop());
+    document.getElementById("cameraFeed").classList.add("hidden");
+    document.getElementById("cameraPlaceholder").classList.remove("hidden");
+    streamAtual = null;
+  }
+}
+
+function mostrarNoMapa(termoBusca) {
+  document.getElementById("mapaIframe").src = https://maps.google.com/maps?q=${termoBusca}&output=embed;
+  mudarAba('mapa');
+}
+
+async function getNyckelToken() {
+  const response = await fetch('https://www.nyckel.com/connect/token', {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: grant_type=client_credentials&client_id=${NYCKEL_CLIENT_ID}&client_secret=${NYCKEL_CLIENT_SECRET}
+  });
+  const data = await response.json(); return data.access_token;
+}
+
+async function scanearObjeto() {
+  const resultado = document.getElementById("resultadoScan");
+  resultado.classList.remove("hidden");
+  resultado.innerHTML = <div class="text-center py-6"><i class="fa-solid fa-bolt text-4xl text-green-500 mb-3 animate-bounce"></i><p class="font-semibold text-slate-700 text-xs">A analisar...</p></div>;
+  const video = document.getElementById("cameraFeed");
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+    const token = await getNyckelToken();
+    const formData = new FormData(); formData.append('data', blob, 'image.jpg');
+    const resposta = await fetch(https://www.nyckel.com/v1/functions/${NYCKEL_FUNCTION_ID}/invoke, {
+      method: "POST", headers: { 'Authorization': Bearer ${token} }, body: formData
+    });
+    const dadosNyckel = await resposta.json();
+    if (!dadosNyckel || !dadosNyckel.labelName) throw new Error("Sem resposta.");
+    let classeLida = dadosNyckel.labelName.toLowerCase().trim();
+    let maiorClasse = classeLida;
+    
+    if(classeLida.includes("comida") || classeLida.includes("organico")) maiorClasse = "comida";
+    else if(classeLida.includes("papel")) maiorClasse = "papelao";
+    else if(classeLida.includes("plastico") || classeLida.includes("pet")) maiorClasse = "plastico";
+    else if(classeLida.includes("vidro")) maiorClasse = "vidro";
+    else if(classeLida.includes("aluminio") || classeLida.includes("metal") || classeLida.includes("lata")) maiorClasse = "aluminio";
+    else if(classeLida.includes("pilha") || classeLida.includes("bateria")) maiorClasse = "pilha";
+
+    if (maiorClasse === "fundo" || maiorClasse === "nada") {
+      resultado.innerHTML = <div class="p-4 rounded-xl bg-amber-50 text-amber-900 text-xs font-semibold text-center mt-3">⚠️ Nada detetado. Aproxime mais!</div>; return;
+    }
+    const dadosObjeto = dadosReciclagem[maiorClasse];
+    if (dadosObjeto) {
+      somMoeda.play().catch(e => {});
+      document.getElementById("xpUsuario").innerText = parseInt(document.getElementById("xpUsuario").innerText) + 50;
+      historicoResiduos[maiorClasse]++;
+      atualizarNivel();
+
+      let estiloBorda = maiorClasse === "pilha" ? "border-orange-500" : "border-green-500";
+      let icone = maiorClasse === "pilha" ? "⚠️" : "♻️";
+      let corBotaoMapa = maiorClasse === "pilha" ? "bg-orange-600" : "bg-emerald-600";
+      let botaoMapa = dadosObjeto.buscaMapa ? <button onclick="mostrarNoMapa('${dadosObjeto.buscaMapa}')" class="w-full ${corBotaoMapa} text-white py-3 rounded-xl text-xs font-bold shadow-sm transition mt-2"><i class="fa-solid fa-map-location-dot"></i> Pontos de Recolha</button> : "";
+
+      resultado.innerHTML = `
+        <div class="space-y-3 mt-3 animate-fade-in no-print">
+          <div class="p-5 rounded-xl bg-slate-50 border-l-4 ${estiloBorda} shadow-sm">
+            <div class="flex items-center gap-3 mb-2"><span class="text-2xl">${icone}</span><div><h4 class="font-bold text-slate-800 text-base">${dadosObjeto.nome}</h4><span class="text-xs font-bold uppercase text-green-600">${dadosObjeto.tipo}</span></div></div>
+            <p class="text-sm text-slate-600">${dadosObjeto.dica}</p>
+          </div>
+          ${botaoMapa}
+        </div>`;
+    }
+  } catch (e) { mostrarAviso("Erro na IA.", "erro"); }
+}
+
+async function analisarLinkRender() {
+  const link = document.getElementById("linkProduto").value.trim();
+  if(!link) { mostrarAviso("Cole um link primeiro!", "erro"); return; }
+  const resultado = document.getElementById("resultadoScan");
+  resultado.classList.remove("hidden");
+  resultado.innerHTML = <div class="text-center py-6"><i class="fa-solid fa-robot text-4xl text-blue-500 mb-3 animate-pulse"></i><p class="font-semibold text-slate-700 text-xs">A analisar o site...</p></div>;
+  try {
+    const response = await fetch("https://ecoscan-api-asjw.onrender.com/api/analisar", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: link })
+    });
+    const data = await response.json();
+    if(data.sucesso) {
+      somMoeda.play().catch(e => {});
+      resultado.innerHTML = `
+        <div class="p-5 rounded-xl bg-blue-50 border-l-4 border-blue-500 shadow-sm mt-3 animate-fade-in">
+          <div class="flex items-center gap-3 mb-3"><span class="text-2xl">🤖</span><h4 class="font-bold text-blue-900 text-base">Análise da OpenAI</h4></div>
+          <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">${data.analise}</p>
+        </div>`;
+    } else { resultado.innerHTML = <div class="p-4 bg-red-50 text-red-800 text-xs text-center mt-3">Erro: ${data.erro}</div>; }
+  } catch (e) { resultado.innerHTML = <div class="p-4 bg-red-50 text-red-800 text-xs text-center mt-3">Servidor Render Desligado.</div>; }
+}
+
+window.onload = atualizarNivel;
+</script>
 </body>
 </html>
