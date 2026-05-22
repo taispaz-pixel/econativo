@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-PT">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
@@ -31,8 +31,6 @@ const NYCKEL_FUNCTION_ID = "qt82mge0uiwoay8p";
 const NYCKEL_CLIENT_ID = "u1wgqv728lzvi1xzovisl4tvij1oak7i";
 const NYCKEL_CLIENT_SECRET = "ktiutb8bsjv3yacmcbkeemop80y7ujrndgaoi26dm7z19px76fbzzs3y5tmsd0g9";
 
-const termosProibidos = ["macaco", "viado", "negão", "puta", "homofobico", "racista", "bicha", "arrombado"];
-
 /* BANCO DE DADOS E PESOS ESTIMADOS */
 const dadosReciclagem = {
   "comida": { nome: "Resíduo Orgânico 🌱", tipo: "Lixeira Marrom 🟤", dica: "Reserve para compostagem.", pesoKg: 0.250, custoPorKg: 1.50, sinonimos: "Restos, cascas, café.", curiosidade: "Pode reduzir o lixo em 50%!", buscaMapa: "compostagem" },
@@ -44,7 +42,6 @@ const dadosReciclagem = {
 };
 
 let historicoResiduos = { comida: 0, papelao: 0, plastico: 0, vidro: 0, aluminio: 0, pilha: 0 };
-const mensagensAgradecimento = [ "O planeta agradece! 🌱", "Ajudando a reduzir lixo! 🌍", "O EcoScan orgulha-se! 🎉" ];
 const somMoeda = new Audio("https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3");
 
 function atualizarNivel() {
@@ -72,25 +69,17 @@ window.atualizarRelatorioGrafico = () => {
     if (qtd > 0) {
       htmlDetalhes += `
         <div class="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 mb-2 shadow-sm">
-          <div>
-            <p class="font-bold text-sm text-slate-800">${dadosReciclagem[chave].nome}</p>
-            <p class="text-xs text-slate-500">${qtd} itens lidos</p>
-          </div>
-          <div class="text-right">
-            <p class="font-bold text-green-700">${pesoTotalClass.toFixed(3)} kg</p>
-            <p class="text-xs font-medium text-slate-500">R$ ${econTotalClass.toFixed(2)}</p>
-          </div>
+          <div><p class="font-bold text-sm text-slate-800">${dadosReciclagem[chave].nome}</p><p class="text-xs text-slate-500">${qtd} itens lidos</p></div>
+          <div class="text-right"><p class="font-bold text-green-700">${pesoTotalClass.toFixed(3)} kg</p><p class="text-xs font-medium text-slate-500">€ ${econTotalClass.toFixed(2)}</p></div>
         </div>`;
     }
   }
 
-  if (totalItens === 0) {
-    htmlDetalhes = <p class="text-xs text-center text-slate-500 italic mt-4">Escaneie objetos com a câmera para gerar dados para o relatório.</p>;
-  }
+  if (totalItens === 0) { htmlDetalhes = <p class="text-xs text-center text-slate-500 italic mt-4">Nenhum dado gerado ainda.</p>; }
 
   document.getElementById("relTotalItens").innerText = totalItens;
   document.getElementById("relTotalKg").innerText = totalKg.toFixed(2) + " kg";
-  document.getElementById("relTotalEcon").innerText = "R$ " + totalEconomia.toFixed(2);
+  document.getElementById("relTotalEcon").innerText = "€ " + totalEconomia.toFixed(2);
   document.getElementById("relatorioLista").innerHTML = htmlDetalhes;
 };
 
@@ -101,7 +90,7 @@ window.abrirCamera = async () => {
   try {
     streamAtual = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
     video.srcObject = streamAtual; video.classList.remove("hidden"); placeholder.classList.add("hidden");
-  } catch (err) { mostrarAviso("Permita a câmera.", "erro"); }
+  } catch (err) { mostrarAviso("Permita o acesso à câmara.", "erro"); }
 };
 
 window.pararCamera = () => {
@@ -166,7 +155,7 @@ window.scanearObjeto = async () => {
       let estiloBorda = maiorClasse === "pilha" ? "border-orange-500" : "border-green-500";
       let icone = maiorClasse === "pilha" ? "⚠️" : "♻️";
       let corBotaoMapa = maiorClasse === "pilha" ? "bg-orange-600" : "bg-emerald-600";
-      let botaoMapa = dadosObjeto.buscaMapa ? <button onclick="window.mostrarNoMapa('${dadosObjeto.buscaMapa}')" class="w-full ${corBotaoMapa} text-white py-3 rounded-xl text-xs font-bold shadow-sm transition mt-2"><i class="fa-solid fa-map-location-dot"></i> Procurar Pontos de Coleta</button> : "";
+      let botaoMapa = dadosObjeto.buscaMapa ? <button onclick="window.mostrarNoMapa('${dadosObjeto.buscaMapa}')" class="w-full ${corBotaoMapa} text-white py-3 rounded-xl text-xs font-bold shadow-sm transition mt-2"><i class="fa-solid fa-map-location-dot"></i> Pontos de Recolha</button> : "";
 
       resultado.innerHTML = `
         <div class="space-y-3 mt-3 animate-fade-in no-print">
@@ -175,7 +164,6 @@ window.scanearObjeto = async () => {
             <p class="text-sm text-slate-600">${dadosObjeto.dica}</p>
           </div>
           ${botaoMapa}
-          <div class="p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 shadow-sm text-xs font-medium flex gap-2"><span>💖</span><div><p class="font-bold">+50 XP Registado no Relatório!</p></div></div>
         </div>`;
     }
   } catch (e) { mostrarAviso("Erro na IA.", "erro"); }
@@ -203,36 +191,50 @@ window.analisarLinkRender = async () => {
   } catch (e) { resultado.innerHTML = <div class="p-4 bg-red-50 text-red-800 text-xs text-center mt-3">Servidor Render Desligado.</div>; }
 };
 
-/* FUNÇÕES DE LOGIN E REGISTO RESTAURADAS */
+/* --- FUNÇÕES DE LOGIN COM DETEÇÃO DE ERROS ATIVADA --- */
 window.login = async () => {
   const e = document.getElementById("email").value.trim(); 
   const s = document.getElementById("senha").value;
   if(!e||!s){ mostrarAviso("Preencha e-mail e senha!","erro"); return; }
+  
   try { 
-    await signInWithEmailAndPassword(auth,e,s); 
-    mostrarAviso("Bem-vinda de volta! 🎉","sucesso"); 
+    mostrarAviso("A verificar os dados... ⏳", "sucesso");
+    await signInWithEmailAndPassword(auth, e, s); 
   } catch(err) { 
-    mostrarAviso("E-mail ou senha incorretos!","erro"); 
+    // AGORA O ERRO VAI APARECER NO ECRÃ
+    mostrarAviso("ERRO: " + err.code, "erro"); 
   }
 };
 
 window.registrar = async () => {
   const e = document.getElementById("email").value.trim(); 
   const s = document.getElementById("senha").value;
-  if(!e||!s||s.length<6){ mostrarAviso("Preencha tudo! A senha precisa de 6 números/letras.","erro"); return; }
+  if(!e||!s||s.length<6){ mostrarAviso("Preencha tudo! A senha precisa de 6 caracteres.","erro"); return; }
+  
   try { 
-    await createUserWithEmailAndPassword(auth,e,s); 
-    mostrarAviso("Conta criada com sucesso! 🎉","sucesso"); 
+    mostrarAviso("A criar a conta... ⏳", "sucesso");
+    await createUserWithEmailAndPassword(auth, e, s); 
   } catch(err) { 
-    mostrarAviso("Erro ao criar conta. Esse e-mail já existe?","erro"); 
+    // AGORA O ERRO VAI APARECER NO ECRÃ
+    mostrarAviso("ERRO: " + err.code, "erro"); 
   }
 };
 
 window.logout = async () => { await signOut(auth); };
 
 onAuthStateChanged(auth, (u) => {
-  if (u) { document.getElementById("loginBox").classList.add("hidden"); document.getElementById("appBox").classList.remove("hidden"); document.getElementById("usuario").innerText = u.email; document.getElementById("usuarioRelatorio").innerText = u.email; carregarMensagens(); atualizarNivel(); }
-  else { document.getElementById("loginBox").classList.remove("hidden"); document.getElementById("appBox").classList.add("hidden"); pararCamera(); }
+  if (u) { 
+    document.getElementById("loginBox").classList.add("hidden"); 
+    document.getElementById("appBox").classList.remove("hidden"); 
+    document.getElementById("usuario").innerText = u.email; 
+    document.getElementById("usuarioRelatorio").innerText = u.email; 
+    carregarMensagens(); 
+    atualizarNivel(); 
+  } else { 
+    document.getElementById("loginBox").classList.remove("hidden"); 
+    document.getElementById("appBox").classList.add("hidden"); 
+    pararCamera(); 
+  }
 });
 
 window.enviarMensagem = async () => {
@@ -251,11 +253,12 @@ function carregarMensagens() {
   });
 }
 
-function mostrarAviso(t, tipo) {
-  const a = document.getElementById("aviso"); 
-  a.className = p-3 mb-4 rounded-xl text-sm font-medium no-print transition-all ${tipo==='sucesso'?'bg-green-100 text-green-800 border border-green-200':tipo==='erro'?'bg-red-100 text-red-800 border border-red-200':'bg-blue-100 text-blue-800 border border-blue-200'};
-  a.innerText = t; a.classList.remove("hidden"); 
-  setTimeout(() => a.classList.add("hidden"), 3500);
+function mostrarAviso(texto, tipo) {
+  const aviso = document.getElementById("aviso"); 
+  aviso.className = p-4 mb-4 rounded-xl text-sm font-bold shadow-md transition-all ${tipo==='sucesso'?'bg-blue-100 text-blue-800 border-2 border-blue-300':'bg-red-100 text-red-800 border-2 border-red-500'};
+  aviso.innerText = texto; 
+  aviso.classList.remove("hidden"); 
+  setTimeout(() => aviso.classList.add("hidden"), 5000);
 }
 
 window.mudarAba = (nome) => {
@@ -313,7 +316,7 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
     </div>
 
     <div id="loginBox" class="space-y-4 no-print">
-      <h3 class="text-lg font-bold text-slate-700 text-center mb-3">Acesse sua Conta</h3>
+      <h3 class="text-lg font-bold text-slate-700 text-center mb-3">Aceda à sua Conta</h3>
       <input id="email" type="email" placeholder="📧 E-mail" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl" />
       <input id="senha" type="password" placeholder="🔒 Senha" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl" />
       <div class="grid grid-cols-2 gap-3 pt-2">
@@ -340,18 +343,18 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
           <video id="cameraFeed" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
           <div id="cameraPlaceholder" class="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center text-white">
             <i class="fa-solid fa-camera text-4xl opacity-20 mb-2"></i>
-            <p class="text-xs opacity-40">Câmera aguardando ativação</p>
+            <p class="text-xs opacity-40">Câmara a aguardar ativação</p>
           </div>
           <div class="scan-line"></div>
         </div>
         <div class="grid grid-cols-2 gap-2 mb-4">
-          <button onclick="abrirCamera()" class="bg-green-600 text-white py-3 rounded-xl text-sm font-bold">📷 Ligar Câmera</button>
+          <button onclick="abrirCamera()" class="bg-green-600 text-white py-3 rounded-xl text-sm font-bold">📷 Ligar Câmara</button>
           <button onclick="scanearObjeto()" class="bg-amber-500 text-white py-3 rounded-xl text-sm font-bold">🔍 Analisar Foto</button>
         </div>
         <div class="pt-4 border-t border-slate-200">
           <h3 class="font-bold text-sm text-slate-700 mb-2">🌐 Analisar Produto por Link (IA)</h3>
           <div class="flex gap-2">
-            <input id="linkProduto" type="url" placeholder="Cole o link do produto aqui..." class="flex-1 p-3 bg-white border border-slate-200 rounded-xl text-sm shadow-sm focus:outline-none focus:border-blue-500" />
+            <input id="linkProduto" type="url" placeholder="Cole o link aqui..." class="flex-1 p-3 bg-white border border-slate-200 rounded-xl text-sm shadow-sm focus:outline-none focus:border-blue-500" />
             <button onclick="analisarLinkRender()" class="bg-blue-600 text-white px-4 rounded-xl font-bold shadow-sm hover:bg-blue-700"><i class="fa-solid fa-magnifying-glass"></i></button>
           </div>
         </div>
@@ -376,7 +379,7 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
         </div>
         <div class="grid grid-cols-3 gap-2 text-center">
           <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-            <p class="text-[10px] text-slate-500 uppercase font-bold">Itens Lidos</p>
+            <p class="text-[10px] text-slate-500 uppercase font-bold">Lidos</p>
             <p id="relTotalItens" class="text-xl font-black text-slate-800">0</p>
           </div>
           <div class="p-3 bg-green-50 border border-green-200 rounded-xl">
@@ -384,14 +387,14 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
             <p id="relTotalKg" class="text-xl font-black text-green-800">0.00 kg</p>
           </div>
           <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl">
-            <p class="text-[10px] text-blue-700 uppercase font-bold">Economia</p>
-            <p id="relTotalEcon" class="text-xl font-black text-blue-800">R$ 0.00</p>
+            <p class="text-[10px] text-blue-700 uppercase font-bold">Econ.</p>
+            <p id="relTotalEcon" class="text-xl font-black text-blue-800">€ 0.00</p>
           </div>
         </div>
         <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-          <h4 class="font-bold text-xs text-slate-600 mb-3 uppercase border-b border-slate-200 pb-2">📦 Detalhamento por Categoria</h4>
+          <h4 class="font-bold text-xs text-slate-600 mb-3 uppercase border-b border-slate-200 pb-2">📦 Detalhamento</h4>
           <div id="relatorioLista">
-             <p class="text-xs text-center text-slate-500 italic mt-4">Nenhum dado gerado ainda.</p>
+             <p class="text-xs text-center text-slate-500 italic mt-4">Ainda sem dados.</p>
           </div>
         </div>
       </div>
@@ -400,7 +403,7 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
         <h3 class="font-bold text-sm text-slate-700 mb-2">💬 EcoMural Coletivo</h3>
         <div id="listaMensagens" class="flex-1 overflow-y-auto bg-slate-50 rounded-xl p-3 mb-2"></div>
         <div class="flex gap-2">
-          <input id="novaMensagem" type="text" placeholder="Compartilhe..." class="flex-1 p-3 border rounded-xl text-sm" />
+          <input id="novaMensagem" type="text" placeholder="Escreva aqui..." class="flex-1 p-3 border rounded-xl text-sm" />
           <button onclick="enviarMensagem()" class="bg-green-600 text-white px-4 rounded-xl"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
       </div>
