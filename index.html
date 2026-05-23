@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>EcoScan - Inteligência Ambiental</title>
+<title>EcoNativo - Inteligência Ambiental</title>
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#16a34a">
@@ -24,6 +24,7 @@ import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTim
 window.addEventListener("error", (e) => alert("ALERTA DE ERRO GERAL: " + e.message));
 window.addEventListener("unhandledrejection", (e) => alert("ALERTA DE SISTEMA: " + (e.reason.message || e.reason)));
 
+// MANTIDO 'ecoscan' AQUI PARA NÃO QUEBRAR O BANCO DE DADOS
 const firebaseConfig = {
   apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw",
   authDomain: "ecoscan-96a80.firebaseapp.com",
@@ -164,7 +165,7 @@ window.imprimirSessaoAtual = () => {
 
   const htmlSimples = `
     <div style="font-family: Arial, sans-serif; padding: 20px;">
-      <h1 style="color: #16a34a; font-size: 24px; margin-bottom: 5px;">🌱 EcoScan</h1>
+      <h1 style="color: #16a34a; font-size: 24px; margin-bottom: 5px;">🌱 EcoNativo</h1>
       <h2 style="color: #334155; font-size: 16px; text-transform: uppercase;">Extrato Rápido de Recompensas</h2>
       <hr style="border: 1px solid #16a34a; margin-bottom: 20px;">
       <p style="font-size: 14px;"><strong>Usuário:</strong> ${usuarioEmail}<br><strong>Data:</strong> ${dataHoje}</p>
@@ -195,7 +196,7 @@ window.imprimirSessaoAtual = () => {
         </thead>
         <tbody>${linhasTabela}</tbody>
       </table>
-      <p style="font-size: 10px; color: #94a3b8; text-align: center; margin-top: 40px;">Valide seu código no EcoPonto parceiro. EcoScan © 2026</p>
+      <p style="font-size: 10px; color: #94a3b8; text-align: center; margin-top: 40px;">Valide seu código no EcoPonto parceiro. EcoNativo © 2026</p>
     </div>`;
 
   document.getElementById("printArea").innerHTML = htmlSimples;
@@ -243,7 +244,7 @@ window.imprimirRelatorioPeriodo = (dias) => {
 
   const htmlMaster = `
     <div style="font-family: Arial, sans-serif; padding: 20px;">
-      <h1 style="color: #16a34a; font-size: 26px; margin-bottom: 5px;">🌱 EcoScan</h1>
+      <h1 style="color: #16a34a; font-size: 26px; margin-bottom: 5px;">🌱 EcoNativo</h1>
       <h2 style="color: #334155; font-size: 14px; text-transform: uppercase;">Extrato Consolidado & Evolução ${tituloPeriodo}</h2>
       <hr style="border: 2px solid #16a34a; margin-bottom: 20px;">
       <div style="background: #ecfdf5; border: 2px solid #6ee7b7; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px;">
@@ -284,7 +285,7 @@ window.imprimirRelatorioPeriodo = (dias) => {
       </table>
       <h3 style="color: #16a34a; font-size: 14px; border-left: 4px solid #16a34a; padding-left: 8px;">GUIA DE RECOMPENSAS: COMO USAR SEUS ECOPOINTS</h3>
       <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; font-size: 12px; line-height: 1.6;">
-        <p><strong>1. Navegue no Marketplace:</strong> Abra o aplicativo EcoScan e acesse a aba "Marketplace".</p>
+        <p><strong>1. Navegue no Marketplace:</strong> Abra o aplicativo EcoNativo e acesse a aba "Marketplace".</p>
         <p><strong>2. Escolha o Benefício:</strong> Troque pontos por produtos reais ou descontos estipulados pelos parceiros.</p>
         <p><strong>3. Gere o Cupom:</strong> O sistema debita seus pontos e gera um QR Code exclusivo.</p>
         <p><strong>4. Retire na Loja:</strong> Apresente o código diretamente no estabelecimento.</p>
@@ -343,7 +344,7 @@ document.getElementById("btnCriarConta").addEventListener("click", async (e) => 
     });
 
     document.getElementById("btnCriarConta").innerText = "Criar Conta";
-    alert("Sua conta foi criada com sucesso! Seja bem-vinda ao EcoScan, " + nome + "!");
+    alert("Sua conta foi criada com sucesso! Seja bem-vinda ao EcoNativo, " + nome + "!");
   } catch(err) {
     document.getElementById("btnCriarConta").innerText = "Criar Conta";
     alert("ERRO AO CRIAR CONTA:\n" + err.message);
@@ -411,7 +412,7 @@ window.abrirCamera = async () => {
   try {
     streamAtual = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
     video.srcObject = streamAtual; video.classList.remove("hidden"); placeholder.classList.add("hidden");
-  } catch (err) { alert("O EcoScan precisa de permissão para usar a sua câmera!"); }
+  } catch (err) { alert("O EcoNativo precisa de permissão para usar a sua câmera!"); }
 };
 
 window.pararCamera = () => {
@@ -497,6 +498,7 @@ window.analisarLinkRender = async () => {
   resultado.classList.remove("hidden");
   resultado.innerHTML = `<div class="text-center py-6"><i class="fa-solid fa-robot text-4xl text-blue-500 mb-3 animate-pulse"></i><p class="font-semibold text-slate-700 text-xs">A Inteligência está lendo o site...</p></div>`;
   try {
+    // MANTIDO 'ecoscan' AQUI PARA CONECTAR COM A SUA API DO RENDER
     const response = await fetch("https://ecoscan-api-asjw.onrender.com/api/analisar", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: link })
     });
@@ -538,7 +540,7 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
   <div class="w-full max-w-lg mx-auto">
     <div class="card">
       <div class="topo">
-        <h1 class="text-2xl font-black flex items-center gap-2">🌱 EcoScan</h1>
+        <h1 class="text-2xl font-black flex items-center gap-2">🌱 EcoNativo</h1>
         <p id="tituloUsuario" class="mt-1 text-[10px] font-black uppercase tracking-wider text-green-200">Iniciante Verde 🌱</p>
         <div class="mt-4 flex justify-between items-center text-xs font-bold border-t border-green-500/30 pt-3">
           <span>Progresso Eco:</span>
