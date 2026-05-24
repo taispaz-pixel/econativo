@@ -27,6 +27,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+// ✅ CORREÇÃO: Deixa funções do Firebase acessíveis para os botões
+window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+window.sendPasswordResetEmail = sendPasswordResetEmail;
+window.signOut = signOut;
+
 // --- SISTEMA DE ALARME DE ERRO CORRIGIDO ---
 window.addEventListener("error", (e) => {
   console.error("ERRO:", e.message, e.error);
@@ -755,13 +761,13 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
                 </select>
                 <select id="catAvaliacao" onchange="atualizarSubCategorias()" class="dark-input text-xs">
                     <option value="Boa">Boa</option>
-                    <option value="Ruim">Ruim</option>
-                    <option value="Superou">Superou</option>
+                    <option value="Ruim">Ruim
+                      <option value="Superou">Superou</option>
                 </select>
                 <div id="subCategoriasContainer"></div>
                 
-                <button onclick="salvarFeedback()" class="w-full bg-purple-600 text-white font-bold py-3
-                  <button onclick="salvarFeedback()" class="w-full bg-purple-600 text-white font-bold py-3 mt-4 rounded-xl">Enviar Feedback</button>
+                <button onclick="salvarFeedback()" class="w-full bg-purple-600 text-white font-bold py-3 mt-4 rounded-xl">Enviar Feedback</button>
+                
                 <div class="grid grid-cols-3 gap-2 mt-2">
                     <button onclick="imprimirAvaliacaoHoje()" class="bg-white text-slate-900 py-3 rounded-xl font-bold text-[10px]">Hoje</button>
                     <button onclick="imprimirAvaliacao15Dias()" class="bg-white text-slate-900 py-3 rounded-xl font-bold text-[10px]">15 Dias</button>
@@ -779,5 +785,5 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
           </div>
         </div>
 
-      </div> </div> </div> </body>
+      </div> </div> </div> </div> </body>
 </html>
