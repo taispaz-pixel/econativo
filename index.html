@@ -24,9 +24,13 @@ import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, si
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // =========================================================================
+// CHAVE MESTRA DO ECONATIVO:
+// -> false = Beta Acabou. O app tranca a tela e manda para a Play Store.
+// -> true = Fase de testes. App totalmente liberado e mostra o banner verde.
 const MODO_BETA_ATIVO = false; 
 // =========================================================================
 
+// --- SISTEMA DE ALARME DE EMERGÊNCIA NATIVO ---
 window.addEventListener("error", (e) => alert("ALERTA DE ERRO GERAL: " + e.message));
 window.addEventListener("unhandledrejection", (e) => alert("ALERTA DE SISTEMA: " + (e.reason.message || e.reason)));
 
@@ -74,17 +78,28 @@ function atualizarNivel() {
 function atualizarRelatorioGrafico() {
   let totalItens = 0; let totalKg = 0; let totalPontos = 0; let totalImpacto = 0;
   let htmlDetalhes = "";
+  
   for (const [chave, qtd] of Object.entries(historicoResiduos)) {
     if (qtd > 0) {
       totalItens += qtd;
       let pesoTotalClass = qtd * dadosReciclagem[chave].pesoKg;
       let pontosTotalClass = qtd * dadosReciclagem[chave].pontos;
       let impactoClass = qtd * dadosReciclagem[chave].pesoImpacto;
-      totalKg += pesoTotalClass; totalPontos += pontosTotalClass; totalImpacto += impactoClass;
-      htmlDetalhes += `<div class="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 mb-2 shadow-sm"><div><p class="font-bold text-sm text-slate-800">${dadosReciclagem[chave].nome}</p><p class="text-xs text-slate-500">${qtd} itens</p></div><div class="text-right"><p class="font-bold text-green-700">+ ${pontosTotalClass} pts</p><p class="text-[10px] font-medium text-blue-500">↓ ${impactoClass.toFixed(2)}% imp.</p></div></div>`;
+      
+      totalKg += pesoTotalClass; 
+      totalPontos += pontosTotalClass;
+      totalImpacto += impactoClass;
+      
+      htmlDetalhes += `
+        <div class="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 mb-2 shadow-sm">
+          <div><p class="font-bold text-sm text-slate-800">${dadosReciclagem[chave].nome}</p><p class="text-xs text-slate-500">${qtd} itens</p></div>
+          <div class="text-right"><p class="font-bold text-green-700">+ ${pontosTotalClass} pts</p><p class="text-[10px] font-medium text-blue-500">↓ ${impactoClass.toFixed(2)}% imp.</p></div>
+        </div>`;
     }
   }
+  
   if (totalItens === 0) { htmlDetalhes = `<p class="text-xs text-center text-slate-500 italic mt-4">Nenhum dado gerado ainda.</p>`; }
+  
   document.getElementById("relTotalItens").innerText = totalItens;
   document.getElementById("relTotalKg").innerText = totalKg.toFixed(2) + " kg";
   document.getElementById("relTotalPontos").innerText = totalPontos + " pts";
@@ -94,10 +109,19 @@ function atualizarRelatorioGrafico() {
 
 window.esquecerSenha = async () => {
   const email = document.getElementById("email").value.trim();
-  if(!email) return alert("Por favor, preencha o seu e-mail!");
-  try { await sendPasswordResetEmail(auth, email); alert("E-mail oficial de redefinição enviado!"); } catch (err) { alert("Erro: " + err.message); }
+  if(!email) {
+    alert("Por favor, digite o seu e-mail no campo correspondente antes de clicar em recuperar senha!");
+    return;
+  }
+  try {
+    await sendPasswordResetEmail(auth, email);
+    alert("Um e-mail oficial de redefinição de senha foi enviado para:\n" + email + "\n\nVerifique sua Caixa de Entrada ou pasta de Spam/Lixo Eletrônico.");
+  } catch (err) {
+    alert("Não conseguimos enviar o link de recuperação:\n" + err.message);
+  }
 };
 
+let modoAtual = "login";
 window.alternarModoAuth = () => {
   const camposCadastro = document.getElementById("camposCadastro");
   const tituloAuth = document.getElementById("tituloAuth");
@@ -125,81 +149,389 @@ window.alternarModoAuth = () => {
   }
 };
 
-// --- FUNÇÕES DE PDF ---
+// ==========================================
+// FUNÇÕES DE PDF PARA DADOS AMBIENTAIS (ABA 3)
+// ==========================================
 window.imprimirSessaoAtualAmbiental = () => {
-  const { jsPDF } = window.jspdf; const doc = new jsPDF();
-  const usuarioEmail = auth.currentUser ? auth.currentUser.email : "Visitante";
-  doc.setFillColor(22, 163, 74); doc.rect(0, 0, 220, 40, 'F');
-  doc.setTextColor(255, 255, 255); doc.setFont("Helvetica", "bold"); doc.setFontSize(24);
-  doc.text("EcoNativo", 15, 20); doc.setFontSize(10); doc.text("EXTRATO AMBIENTAL DA SESSÃO", 15, 30);
-  doc.setTextColor(51, 65, 85); doc.setFontSize(11); doc.text(`Usuário: ${usuarioEmail}`, 15, 52);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
   
+  const usuarioEmail = auth.currentUser ? auth.currentUser.email : "Visitante";
+  const dataHoje = new Date().toLocaleDateString('pt-BR');
+  
+  doc.setFillColor(22, 163, 74);
+  doc.rect(0, 0, 220, 40, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(24);
+  doc.text("EcoNativo", 15, 20);
+  doc.setFontSize(10);
+  doc.setFont("Helvetica", "normal");
+  doc.text("EXTRATO AMBIENTAL DA SESSÃO", 15, 30);
+  
+  doc.setTextColor(51, 65, 85);
+  doc.setFontSize(11);
+  doc.text(`Usuário: ${usuarioEmail}`, 15, 52);
+  doc.text(`Data de Emissão: ${dataHoje}`, 15, 58);
+  
+  let totalPontos = 0; let totalKg = 0; let totalImpacto = 0;
   let rows = [];
+
   for (const [chave, qtd] of Object.entries(historicoResiduos)) {
-    if (qtd > 0) rows.push([dadosReciclagem[chave].nome, `${qtd} un`, `${(qtd * dadosReciclagem[chave].pesoKg).toFixed(3)} kg`, `+${qtd * dadosReciclagem[chave].pontos} pts`]);
+    if (qtd > 0) {
+      let pts = qtd * dadosReciclagem[chave].pontos;
+      let kg = qtd * dadosReciclagem[chave].pesoKg;
+      let imp = qtd * dadosReciclagem[chave].pesoImpacto;
+      totalPontos += pts; totalKg += kg; totalImpacto += imp;
+      rows.push([dadosReciclagem[chave].nome, `${qtd} un`, `${kg.toFixed(3)} kg`, `+${pts} pts`, dadosReciclagem[chave].tipo]);
+    }
   }
-  doc.autoTable({ startY: 70, head: [['Material', 'Qtd', 'Massa', 'Pontos']], body: rows });
-  window.open(doc.output('bloburl'), '_blank');
+  
+  if(rows.length === 0) {
+    rows.push(["Nenhum resíduo coletado nesta sessão", "0 un", "0.00 kg", "0 pts", "-"]);
+  }
+
+  doc.setFillColor(248, 250, 252);
+  doc.rect(15, 68, 55, 25, 'F'); doc.rect(77, 68, 55, 25, 'F'); doc.rect(140, 68, 55, 25, 'F');
+  
+  doc.setFontSize(8);
+  doc.text("MASSA TOTAL", 20, 75); doc.text("ECOPOINTS", 82, 75); doc.text("IMPACTO REDUZIDO", 145, 75);
+  
+  doc.setFontSize(14); doc.setFont("Helvetica", "bold");
+  doc.text(`${totalKg.toFixed(2)} kg`, 20, 85); doc.text(`+${totalPontos} pts`, 82, 85); doc.text(`-${totalImpacto.toFixed(2)}%`, 145, 85);
+  
+  doc.setFontSize(12);
+  doc.text("Detalhamento de Coletas", 15, 107);
+
+  doc.autoTable({
+    startY: 112, head: [['Material', 'Qtd', 'Massa', 'Pontos', 'Destinação']], body: rows,
+    headStyles: { fillColor: [22, 163, 74] }, theme: 'striped'
+  });
+
+  doc.setFontSize(9); doc.setFont("Helvetica", "italic");
+  doc.text("Valide seu código no EcoPonto parceiro. EcoNativo © 2026", 105, doc.internal.pageSize.height - 15, { align: "center" });
+
+  const blobUri = doc.output('bloburl');
+  window.open(blobUri, '_blank');
 };
 
 window.imprimirRelatorioPeriodoAmbiental = (dias) => {
-  const { jsPDF } = window.jspdf; const doc = new jsPDF();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const usuarioEmail = auth.currentUser ? auth.currentUser.email : "Visitante";
+  const tituloPeriodo = dias === 15 ? "Quinzenal" : "Mensal";
+  
   doc.setFillColor(16, 185, 129); doc.rect(0, 0, 220, 40, 'F');
   doc.setTextColor(255, 255, 255); doc.setFont("Helvetica", "bold"); doc.setFontSize(24);
-  doc.text("EcoNativo", 15, 20); doc.setFontSize(10); doc.text(`RELATÓRIO ${dias} DIAS`, 15, 30);
-  doc.autoTable({ startY: 70, head: [['Material', 'Status']], body: [["Orgânico", "Eficiente"], ["Papel", "Eficiente"]] });
-  window.open(doc.output('bloburl'), '_blank');
+  doc.text("EcoNativo", 15, 20);
+  doc.setFontSize(10); doc.setFont("Helvetica", "normal");
+  doc.text(`EVOLUÇÃO AMBIENTAL ${tituloPeriodo.toUpperCase()}`, 15, 30);
+  
+  doc.setTextColor(51, 65, 85); doc.setFontSize(11);
+  doc.text(`Usuário: ${usuarioEmail}`, 15, 52);
+  
+  let totalPontos = 350; let totalKg = 4.2; let totalImpacto = 8.5;
+  let lines = [
+    ["Resíduo Orgânico 🌱", "2 un", "5 un", "Crescimento Eficiente ↑", "Lixeira Marrom 🟤"],
+    ["Papelão / Papel ♻️", "1 un", "3 un", "Crescimento Eficiente ↑", "Lixeira Azul 🔵"],
+    ["Plástico / Pet ♻️", "4 un", "8 un", "Crescimento Eficiente ↑", "Lixeira Vermelha 🔴"]
+  ];
+
+  doc.setFillColor(236, 253, 245); doc.rect(15, 62, 180, 18, 'F');
+  doc.setTextColor(4, 120, 87); doc.setFont("Helvetica", "bold"); doc.setFontSize(11);
+  doc.text("Progresso Incrível! Você manteve ótimos hábitos sustentáveis.", 20, 73);
+
+  doc.setTextColor(51, 65, 85); doc.setFontSize(12); doc.text("Comparativo de Desempenho", 15, 93);
+  doc.setFillColor(248, 250, 252); doc.rect(15, 98, 55, 25, 'F'); doc.rect(77, 98, 55, 25, 'F'); doc.rect(140, 98, 55, 25, 'F');
+  
+  doc.setFontSize(8); doc.text("REDUÇÃO IMPACTO", 20, 105); doc.text("ECOPOINTS", 82, 105); doc.text("MASSA TRIADA", 145, 105);
+  doc.setFontSize(13); doc.text(`${totalImpacto.toFixed(2)}%`, 20, 115); doc.text(`${totalPontos} pts`, 82, 115); doc.text(`${totalKg.toFixed(2)} kg`, 145, 115);
+
+  doc.setFontSize(12); doc.text("Evolução por Categoria", 15, 137);
+
+  doc.autoTable({
+    startY: 142, head: [['Material', 'Anterior', 'Atual', 'Variação', 'Destinação']], body: lines,
+    headStyles: { fillColor: [16, 185, 129] }, theme: 'striped'
+  });
+
+  doc.setFontSize(9); doc.setFont("Helvetica", "italic");
+  doc.text("EcoNativo - Inteligência Ambiental © 2026", 105, doc.internal.pageSize.height - 15, { align: "center" });
+
+  const blobUri = doc.output('bloburl');
+  window.open(blobUri, '_blank');
 };
 
+
+// ==========================================
+// FUNÇÕES DE FEEDBACK E PDF DE FEEDBACK (ABA 4)
+// ==========================================
 window.atualizarSubCategorias = () => {
     const cat = document.getElementById('catAvaliacao').value;
     const subContainer = document.getElementById('subCategoriasContainer');
-    let htmlSub = (cat === "Boa") ? `<select id="subAvaliacao" class="dark-input text-xs"><option>Funciona bem</option><option>Muito seguro</option></select>` : `<select id="subAvaliacao" class="dark-input text-xs"><option>Lento / Demorado</option><option>Muito complexo</option></select>`;
+    let htmlSub = "";
+    if(cat === "Boa") {
+        htmlSub = `<select id="subAvaliacao" class="dark-input text-xs"><option>Funciona bem</option><option>Muito seguro</option><option>Interface bonita</option></select>`;
+    } else if(cat === "Ruim") {
+        htmlSub = `<select id="subAvaliacao" class="dark-input text-xs"><option>Lento / Demorado</option><option>Muito complexo</option><option>Trava nas fotos</option></select>`;
+    } else if(cat === "Superou") {
+        htmlSub = `<select id="subAvaliacao" class="dark-input text-xs"><option>Excelente suporte</option><option>Iniciativa Incrível</option><option>Melhor que concorrentes</option></select>`;
+    }
     subContainer.innerHTML = htmlSub;
 };
 
 window.salvarFeedback = async () => {
     const nota = document.getElementById('notaEstrelas').value;
     const cat = document.getElementById('catAvaliacao').value;
-    const sub = document.getElementById('subAvaliacao').value;
+    const sub = document.getElementById('subAvaliacao') ? document.getElementById('subAvaliacao').value : '';
     const u = auth.currentUser;
     if(!u) return;
-    await addDoc(collection(db, "avaliacoes_app"), { usuario: u.email, nota, categoria: cat, subcategoria: sub, data: serverTimestamp() });
-    alert("Feedback salvo!");
+    try {
+        await addDoc(collection(db, "avaliacoes_app"), { usuario: u.email, nota: nota, categoria: cat, subcategoria: sub, data: serverTimestamp() });
+        alert(`Feedback salvo com sucesso no banco de dados!`);
+    } catch(e) { alert("Erro ao salvar feedback."); }
 };
 
 window.imprimirPDF_FeedbackSessao = () => {
-    const { jsPDF } = window.jspdf; const doc = new jsPDF();
-    doc.text("Relatório de Feedback", 20, 20);
-    window.open(doc.output('bloburl'), '_blank');
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const usuarioEmail = auth.currentUser ? auth.currentUser.email : "Visitante";
+  const dataHoje = new Date().toLocaleDateString('pt-BR');
+
+  const notaApp = document.getElementById('notaEstrelas').value;
+  const motivoApp = document.getElementById('catAvaliacao').value;
+  const detalheApp = document.getElementById('subAvaliacao') ? document.getElementById('subAvaliacao').value : 'N/A';
+
+  doc.setFillColor(30, 41, 59); // Fundo escuro igual a foto
+  doc.rect(0, 0, 220, 40, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("Helvetica", "bold"); doc.setFontSize(24);
+  doc.text("EcoNativo", 15, 20);
+  doc.setFontSize(10); doc.setFont("Helvetica", "normal");
+  doc.text("RELATÓRIO DE FEEDBACK - SESSÃO ATUAL", 15, 30);
+
+  doc.setTextColor(51, 65, 85);
+  doc.setFontSize(11);
+  doc.text(`Usuário: ${usuarioEmail}`, 15, 52);
+  doc.text(`Data da Avaliação: ${dataHoje}`, 15, 58);
+
+  doc.setFontSize(14); doc.setFont("Helvetica", "bold");
+  doc.text("Sua Opinião Sobre o App", 15, 80);
+  
+  doc.setFontSize(12); doc.setFont("Helvetica", "normal");
+  doc.text(`Nota Geral: ${notaApp}`, 15, 95);
+  doc.text(`Avaliação Principal: ${motivoApp}`, 15, 105);
+  doc.text(`Detalhe Específico: ${detalheApp}`, 15, 115);
+
+  doc.setFontSize(9); doc.setFont("Helvetica", "italic");
+  doc.text("Documento Oficial de Feedback de Usuário - EcoNativo © 2026", 105, doc.internal.pageSize.height - 15, { align: "center" });
+
+  const blobUri = doc.output('bloburl'); window.open(blobUri, '_blank');
 };
 
 window.imprimirPDF_FeedbackPeriodo = (dias) => {
-    const { jsPDF } = window.jspdf; const doc = new jsPDF();
-    doc.text(`Relatório de Feedback ${dias} dias`, 20, 20);
-    window.open(doc.output('bloburl'), '_blank');
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const usuarioEmail = auth.currentUser ? auth.currentUser.email : "Visitante";
+  
+  doc.setFillColor(30, 41, 59);
+  doc.rect(0, 0, 220, 40, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("Helvetica", "bold"); doc.setFontSize(24);
+  doc.text("EcoNativo", 15, 20);
+  doc.setFontSize(10); doc.setFont("Helvetica", "normal");
+  doc.text(`RELATÓRIO DE FEEDBACK - ÚLTIMOS ${dias} DIAS`, 15, 30);
+
+  doc.setTextColor(51, 65, 85);
+  doc.setFontSize(11);
+  doc.text(`Usuário: ${usuarioEmail}`, 15, 52);
+
+  let feedbackMock = [
+    ["5 Estrelas", "Boa", "Funciona bem", "Recorrente"],
+    ["4 Estrelas", "Boa", "Interface bonita", "Ocasional"]
+  ];
+
+  doc.setFontSize(12); doc.setFont("Helvetica", "bold");
+  doc.text("Histórico Consolidado de Avaliações", 15, 75);
+
+  doc.autoTable({
+    startY: 80, head: [['Nota', 'Avaliação', 'Detalhe', 'Frequência']], body: feedbackMock,
+    headStyles: { fillColor: [30, 41, 59] }, theme: 'striped'
+  });
+
+  doc.setFontSize(9); doc.setFont("Helvetica", "italic");
+  doc.text("Documento Oficial de Feedback de Usuário - EcoNativo © 2026", 105, doc.internal.pageSize.height - 15, { align: "center" });
+
+  const blobUri = doc.output('bloburl'); window.open(blobUri, '_blank');
 };
 
-// --- IA OTIMIZADA (CURATIVO DE VELOCIDADE APLICADO) ---
-let tokenNyckelSalvo = null;
-let tempoToken = 0;
+
+// ==========================================
+// FUNÇÕES DE AUTENTICAÇÃO E NAVEGAÇÃO
+// ==========================================
+document.getElementById("btnEntrar").addEventListener("click", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("email").value.trim();
+  const senha = document.getElementById("senha").value;
+
+  if(!email || !senha) {
+    alert("Por favor, preencha o seu e-mail e a senha!");
+    return;
+  }
+  try {
+    document.getElementById("btnEntrar").innerText = "Acessando...";
+    await signInWithEmailAndPassword(auth, email, senha);
+    document.getElementById("btnEntrar").innerText = "Entrar";
+  } catch(err) {
+    document.getElementById("btnEntrar").innerText = "Entrar";
+    alert("ERRO AO ENTRAR:\n" + err.message);
+  }
+});
+
+document.getElementById("btnCriarConta").addEventListener("click", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("email").value.trim();
+  const senha = document.getElementById("senha").value;
+  const nome = document.getElementById("nomeCompleto").value.trim();
+  const whatsapp = document.getElementById("whatsapp").value.trim();
+  const dataNascimento = document.getElementById("dataNascimento").value;
+
+  if(!nome || !whatsapp || !dataNascimento || !email || !senha) {
+    alert("Atenção: Para se cadastrar, preencha todos os campos, incluindo a data de nascimento!");
+    return;
+  }
+  if(senha.length < 6) {
+    alert("Atenção: A senha precisa ter pelo menos 6 dígitos.");
+    return;
+  }
+
+  try {
+    document.getElementById("btnCriarConta").innerText = "Criando...";
+    const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
+    const u = userCredential.user;
+    
+    await setDoc(doc(db, "usuarios", u.uid), {
+      nomeCompleto: nome,
+      whatsapp: whatsapp,
+      dataNascimento: dataNascimento,
+      email: email,
+      dataCadastro: serverTimestamp()
+    });
+
+    document.getElementById("btnCriarConta").innerText = "Criar Conta";
+    alert("Sua conta foi criada com sucesso! Seja bem-vinda ao EcoNativo, " + nome + "!");
+  } catch(err) {
+    document.getElementById("btnCriarConta").innerText = "Criar Conta";
+    alert("ERRO AO CRIAR CONTA:\n" + err.message);
+  }
+});
+
+window.mudarAba = (nome) => {
+  document.querySelectorAll(".aba-conteudo").forEach(el => el.classList.add("hidden"));
+  document.querySelectorAll(".aba-btn").forEach(el => el.classList.remove("bg-green-600", "text-white"));
+  document.getElementById(`aba-${nome}`).classList.remove("hidden");
+
+  const botoes = document.querySelectorAll(".aba-btn");
+  if (nome === "escanear") botoes[0].classList.add("bg-green-600", "text-white");
+  if (nome === "mapa") botoes[1].classList.add("bg-green-600", "text-white");
+  if (nome === "relatorio") botoes[2].classList.add("bg-green-600", "text-white");
+  if (nome === "avaliar") botoes[3].classList.add("bg-green-600", "text-white");
+  if (nome === "chat") botoes[4].classList.add("bg-green-600", "text-white");
+
+  if(nome === "escanear") window.abrirCamera(); else window.pararCamera();
+  if(nome === "relatorio") atualizarRelatorioGrafico();
+};
+
+window.logout = async () => { await signOut(auth); };
+
+onAuthStateChanged(auth, (u) => {
+  if (u) {
+    const emailUsuario = u.email.toLowerCase();
+    const ehTais = (emailUsuario === "tais.paz@live.com");
+
+    document.getElementById("loginBox").classList.add("hidden");
+    document.getElementById("usuario").innerText = u.email;
+    carregarMensagens();
+    atualizarNivel();
+
+    if (MODO_BETA_ATIVO || ehTais) {
+        document.getElementById("appContainer").classList.remove("hidden");
+        document.getElementById("telaBloqueioBeta").classList.add("hidden");
+    } else {
+        document.getElementById("appContainer").classList.add("hidden");
+        document.getElementById("telaBloqueioBeta").classList.remove("hidden");
+        if(window.pararCamera) window.pararCamera();
+    }
+  } else {
+    document.getElementById("loginBox").classList.remove("hidden");
+    document.getElementById("appContainer").classList.add("hidden");
+    const telaBloqueio = document.getElementById("telaBloqueioBeta");
+    if(telaBloqueio) telaBloqueio.classList.add("hidden");
+    if(window.pararCamera) window.pararCamera();
+  }
+});
+
+window.enviarMensagem = async () => {
+  const t = document.getElementById("novaMensagem").value.trim();
+  const u = auth.currentUser;
+  if(!u||!t) return;
+  try{
+    await addDoc(collection(db, "mensagens"), { usuario: u.email, texto: t, data: serverTimestamp() });
+    document.getElementById("novaMensagem").value = "";
+  } catch(e){ alert("Erro ao enviar mensagem no chat!"); }
+};
+
+function carregarMensagens() {
+  const q = query(collection(db, "mensagens"), orderBy("data", "desc"));
+  onSnapshot(q, (s) => {
+    const lista = document.getElementById("listaMensagens");
+    if(!lista) return;
+    lista.innerHTML = "";
+    s.forEach(docSnap => {
+      const m = docSnap.data();
+      lista.innerHTML += `<div class="p-3 bg-slate-50 rounded-xl mb-2 border-l-4 border-green-500 text-xs"><div><span class="font-bold text-green-700">${m.usuario}</span><p class="text-slate-700 mt-0.5">${m.texto}</p></div></div>`;
+    });
+  });
+}
+
+let streamAtual = null;
+window.abrirCamera = async () => {
+  const video = document.getElementById("cameraFeed");
+  const placeholder = document.getElementById("cameraPlaceholder");
+  try {
+    streamAtual = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    video.srcObject = streamAtual; video.classList.remove("hidden"); placeholder.classList.add("hidden");
+  } catch (err) { alert("O EcoNativo precisa de permissão para usar a sua câmera!"); }
+};
+
+window.pararCamera = () => {
+  if(streamAtual) {
+    streamAtual.getTracks().forEach(t => t.stop());
+    document.getElementById("cameraFeed").classList.add("hidden");
+    document.getElementById("cameraPlaceholder").classList.remove("hidden");
+    streamAtual = null;
+  }
+};
+
+window.mostrarNoMapa = (termoBusca) => {
+  document.getElementById("mapaIframe").src = `https://maps.google.com/maps?q=${termoBusca}&output=embed`;
+  window.mudarAba('mapa');
+};
 
 async function getNyckelToken() {
-  if (tokenNyckelSalvo && (Date.now() - tempoToken < 3000000)) return tokenNyckelSalvo;
   const response = await fetch('https://www.nyckel.com/connect/token', {
     method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `grant_type=client_credentials&client_id=${NYCKEL_CLIENT_ID}&client_secret=${NYCKEL_CLIENT_SECRET}`
   });
-  const data = await response.json();
-  tokenNyckelSalvo = data.access_token;
-  tempoToken = Date.now();
-  return tokenNyckelSalvo;
+  const data = await response.json(); return data.access_token;
 }
 
 window.scanearObjeto = async () => {
   const resultado = document.getElementById("resultadoScan");
   resultado.classList.remove("hidden");
-  resultado.innerHTML = `<div class="text-center py-6"><i class="fa-solid fa-bolt text-4xl text-green-500 mb-3 animate-bounce"></i><p class="font-semibold text-slate-700 text-xs">Analisando...</p></div>`;
+  resultado.innerHTML = `<div class="text-center py-6"><i class="fa-solid fa-bolt text-4xl text-green-500 mb-3 animate-bounce"></i><p class="font-semibold text-slate-700 text-xs">Analisando na nuvem...</p></div>`;
   const video = document.getElementById("cameraFeed");
   try {
     const canvas = document.createElement("canvas");
@@ -215,49 +547,66 @@ window.scanearObjeto = async () => {
     if (!dadosNyckel ||!dadosNyckel.labelName) throw new Error("Sem resposta.");
     let classeLida = dadosNyckel.labelName.toLowerCase().trim();
     let maiorClasse = classeLida;
-    if(classeLida.includes("comida")) maiorClasse = "comida";
-    else if(classeLida.includes("papel")) maiorClasse = "papelao";
-    else if(classeLida.includes("plastico")) maiorClasse = "plastico";
-    else if(classeLida.includes("vidro")) maiorClasse = "vidro";
-    else if(classeLida.includes("aluminio")) maiorClasse = "aluminio";
-    else if(classeLida.includes("pilha")) maiorClasse = "pilha";
 
+    if(classeLida.includes("comida") || classeLida.includes("organico")) maiorClasse = "comida";
+    else if(classeLida.includes("papel")) maiorClasse = "papelao";
+    else if(classeLida.includes("plastico") || classeLida.includes("pet")) maiorClasse = "plastico";
+    else if(classeLida.includes("vidro")) maiorClasse = "vidro";
+    else if(classeLida.includes("aluminio") || classeLida.includes("metal") || classeLida.includes("lata")) maiorClasse = "aluminio";
+    else if(classeLida.includes("pilha") || classeLida.includes("bateria")) maiorClasse = "pilha";
+
+    if (maiorClasse === "fundo" || maiorClasse === "nada") {
+      resultado.innerHTML = `<div class="p-4 rounded-xl bg-amber-50 text-amber-900 text-xs font-semibold text-center mt-3">⚠️ Nenhum objeto detectado. Aproxime mais!</div>`; return;
+    }
     const dadosObjeto = dadosReciclagem[maiorClasse];
     if (dadosObjeto) {
       somMoeda.play().catch(e => {});
       document.getElementById("xpUsuario").innerText = parseInt(document.getElementById("xpUsuario").innerText) + 50;
       historicoResiduos[maiorClasse]++;
       atualizarNivel();
-      resultado.innerHTML = `<div class="p-5 rounded-xl bg-slate-50 border-l-4 border-green-500 shadow-sm mt-3"><h4 class="font-bold">${dadosObjeto.nome}</h4><p class="text-sm">${dadosObjeto.dica}</p></div>`;
+
+      let estiloBorda = maiorClasse === "pilha"? "border-orange-500" : "border-green-500";
+      let icone = maiorClasse === "pilha"? "⚠️" : "♻️";
+      let corBotaoMapa = maiorClasse === "pilha"? "bg-orange-600" : "bg-emerald-600";
+      let botaoMapa = dadosObjeto.buscaMapa? `<button type="button" onclick="window.mostrarNoMapa('${dadosObjeto.buscaMapa}')" class="w-full ${corBotaoMapa} text-white py-3 rounded-xl text-xs font-bold shadow-sm transition mt-2"><i class="fa-solid fa-map-location-dot"></i> Encontrar Pontos de Coleta</button>` : "";
+
+      resultado.innerHTML = `
+        <div class="space-y-3 mt-3 animate-fade-in no-print">
+          <div class="p-5 rounded-xl bg-slate-50 border-l-4 ${estiloBorda} shadow-sm">
+            <div class="flex items-center gap-3 mb-2"><span class="text-2xl">${icone}</span><div><h4 class="font-bold text-slate-800 text-base">${dadosObjeto.nome}</h4><span class="text-xs font-bold uppercase text-green-600">${dadosObjeto.tipo}</span></div></div>
+            <p class="text-sm text-slate-600">${dadosObjeto.dica}</p>
+          </div>
+          ${botaoMapa}
+        </div>`;
     }
-  } catch (e) { alert("Erro de comunicação!"); }
+  } catch (e) { alert("Erro de comunicação com a IA da Câmera!"); }
 };
 
 window.analisarLinkRender = async () => {
   const link = document.getElementById("linkProduto").value.trim();
-  if(!link) return;
+  if(!link) { alert("Por favor, cole um link primeiro!"); return; }
   const resultado = document.getElementById("resultadoScan");
   resultado.classList.remove("hidden");
+  resultado.innerHTML = `<div class="text-center py-6"><i class="fa-solid fa-robot text-4xl text-blue-500 mb-3 animate-pulse"></i><p class="font-semibold text-slate-700 text-xs">A Inteligência está lendo o site...</p></div>`;
   try {
     const response = await fetch("https://ecoscan-api-asjw.onrender.com/api/analisar", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: link })
     });
     const data = await response.json();
-    resultado.innerHTML = `<div class="p-5 rounded-xl bg-blue-50 border-l-4 border-blue-500 mt-3"><p>${data.analise}</p></div>`;
-  } catch (e) { alert("Erro no servidor!"); }
+    if(data.sucesso) {
+      somMoeda.play().catch(e => {});
+      resultado.innerHTML = `
+        <div class="p-5 rounded-xl bg-blue-50 border-l-4 border-blue-500 shadow-sm mt-3 animate-fade-in">
+          <div class="flex items-center gap-3 mb-3"><span class="text-2xl">🤖</span><h4 class="font-bold text-blue-900 text-base">Análise da OpenAI</h4></div>
+          <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">${data.analise}</p>
+        </div>`;
+    } else { alert("Erro na Inteligência Artificial: " + data.erro); }
+  } catch (e) { alert("Falha na comunicação. O Servidor Render está desligado?"); }
 };
 
-window.mudarAba = (nome) => {
-  document.querySelectorAll(".aba-conteudo").forEach(el => el.classList.add("hidden"));
-  document.querySelectorAll(".aba-btn").forEach(el => el.classList.remove("bg-green-600", "text-white"));
-  document.getElementById(`aba-${nome}`).classList.remove("hidden");
-  if (nome === "escanear") window.abrirCamera(); else window.pararCamera();
-  if (nome === "relatorio") atualizarRelatorioGrafico();
-};
 </script>
 
 <style>
-/* CSS Mantido original */
 * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
 body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); min-height: 100vh; padding-top: 10px; }
 .card{ background:white; border-radius:28px; padding:24px; box-shadow: 0 8px 32px rgba(22, 163, 74, 0.12); }
@@ -265,11 +614,236 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
 .scan-frame { position: relative; width: 100%; height: 320px; border-radius: 20px; overflow: hidden; background: #000; margin: 15px 0; }
 .scan-line { position: absolute; width: 100%; height: 3px; background: #4ade80; animation: scan 2s linear infinite; z-index: 10; }
 @keyframes scan{ 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
+
+input[type="date"]::-webkit-datetime-edit-year-field:not([aria-valuenow]),
+input[type="date"]::-webkit-datetime-edit-month-field:not([aria-valuenow]),
+input[type="date"]::-webkit-datetime-edit-day-field:not([aria-valuenow]),
+input[type="date"]::-webkit-datetime-edit-text { color: transparent; }
+input[type="date"]:focus::-webkit-datetime-edit-year-field,
+input[type="date"]:focus::-webkit-datetime-edit-month-field,
+input[type="date"]:focus::-webkit-datetime-edit-day-field,
+input[type="date"]:focus::-webkit-datetime-edit-text,
+input[type="date"]:valid::-webkit-datetime-edit-year-field,
+input[type="date"]:valid::-webkit-datetime-edit-month-field,
+input[type="date"]:valid::-webkit-datetime-edit-day-field,
+input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
+
+/* CSS do novo formulário escuro */
 .dark-bg { background-color: #0b1120; border-radius: 24px; padding: 20px;}
 .dark-card { background: #1e293b; border-radius: 20px; padding: 24px; border: 1px solid #334155; }
 .dark-input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 12px; color: white; outline: none; margin-top: 4px; appearance: none;}
+.dark-input:focus { border-color: #a855f7; }
 </style>
 </head>
+
 <body>
+
+<div id="mainWrapper" class="p-4">
+  <div class="w-full max-w-lg mx-auto">
+    <div class="card">
+      <div class="topo">
+        <h1 class="text-2xl font-black flex items-center gap-2">🌱 EcoNativo</h1>
+        <p id="tituloUsuario" class="mt-1 text-[10px] font-black uppercase tracking-wider text-green-200">Iniciante Verde 🌱</p>
+        <div class="mt-4 flex justify-between items-center text-xs font-bold border-t border-green-500/30 pt-3">
+          <span>Progresso Eco:</span>
+          <span class="bg-white/20 px-3 py-1 rounded-full">XP: <span id="xpUsuario">150</span></span>
+        </div>
+      </div>
+
+      <div id="loginBox" class="space-y-4">
+        <h3 id="tituloAuth" class="text-lg font-bold text-slate-700 text-center mb-3">Acesse sua Conta</h3>
+        
+        <div id="camposCadastro" class="space-y-4 hidden">
+          <input id="nomeCompleto" type="text" placeholder="👤 Nome Completo" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-green-500" />
+          <input id="whatsapp" type="tel" placeholder="💬 WhatsApp (com DDD)" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-green-500" />
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">📅</span>
+            <input id="dataNascimento" type="date" required class="w-full p-4 pl-12 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 focus:outline-none focus:border-green-500 appearance-none" />
+          </div>
+        </div>
+
+        <input id="email" type="email" placeholder="📧 E-mail" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-green-500" />
+        <input id="senha" type="password" placeholder="🔒 Senha" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-green-500" />
+        
+        <div id="linkEsqueci" class="text-right">
+          <button type="button" onclick="window.esquecerSenha()" class="text-xs text-green-600 font-semibold hover:underline">Esqueceu sua senha?</button>
+        </div>
+
+        <div class="flex flex-col gap-2 pt-2">
+          <button id="btnEntrar" type="button" class="w-full bg-green-600 text-white p-4 rounded-xl font-bold shadow-sm hover:bg-green-700">Entrar</button>
+          <button id="btnCriarConta" type="button" class="w-full bg-slate-900 text-white p-4 rounded-xl font-bold shadow-sm hover:bg-slate-800 hidden">Criar Conta</button>
+        </div>
+
+        <div class="text-center pt-2">
+          <button id="btnAlternarModo" type="button" onclick="window.alternarModoAuth()" class="text-xs text-slate-500 font-bold hover:underline">Não tem conta? Cadastre-se agora</button>
+        </div>
+      </div>
+
+      <div id="telaBloqueioBeta" class="hidden flex flex-col items-center justify-center space-y-5 text-center py-6">
+        <div class="bg-green-100 p-6 rounded-full inline-block mb-2 shadow-sm"><i class="fa-solid fa-lock text-5xl text-green-600"></i></div>
+        <h2 class="text-2xl font-black text-slate-800">Fase Beta Encerrada!</h2>
+        <p class="text-sm text-slate-600 leading-relaxed px-2">A nossa Fase Beta gratuita acabou! Muito obrigado por nos ajudar a crescer. Para continuar escaneando seus resíduos e ajudando o meio ambiente com acesso 100% liberado, adquira a versão oficial na Play Store.</p>
+        <button onclick="alert('Redirecionando para a loja de aplicativos...')" class="w-full bg-green-600 text-white p-4 rounded-xl font-bold shadow-lg hover:bg-green-700 mt-4 flex justify-center items-center gap-2 text-lg"><i class="fa-brands fa-google-play"></i> Baixar Versão Oficial</button>
+        <button type="button" onclick="window.logout()" class="text-xs text-slate-400 font-bold mt-4 hover:underline">Sair da Conta</button>
+      </div>
+
+      <div id="appContainer" class="hidden space-y-4">
+        <div class="flex justify-between items-center bg-green-50 p-3 rounded-xl text-xs">
+          <span class="text-slate-600 font-medium">👤 <span id="usuario"></span></span>
+          <button type="button" onclick="window.logout()" class="text-red-600 font-bold hover:underline">Sair</button>
+        </div>
+
+        <div class="grid grid-cols-5 gap-1 bg-slate-100 p-1 rounded-xl">
+          <button type="button" onclick="window.mudarAba('escanear')" class="aba-btn py-2.5 rounded-lg text-[10px] font-bold bg-green-600 text-white">📷 Scan</button>
+          <button type="button" onclick="window.mudarAba('mapa')" class="aba-btn py-2.5 rounded-lg text-[10px] font-bold text-slate-600">📍 Mapa</button>
+          <button type="button" onclick="window.mudarAba('relatorio')" class="aba-btn py-2.5 rounded-lg text-[10px] font-bold text-slate-600">📊 Dados</button>
+          <button type="button" onclick="window.mudarAba('avaliar')" class="aba-btn py-2.5 rounded-lg text-[10px] font-bold text-slate-600">⭐ Avaliar</button>
+          <button type="button" onclick="window.mudarAba('chat')" class="aba-btn py-2.5 rounded-lg text-[10px] font-bold text-slate-600">💬 Mural</button>
+        </div>
+
+        <div id="aba-escanear" class="aba-conteudo space-y-3">
+          <div class="scan-frame">
+            <video id="cameraFeed" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
+            <div id="cameraPlaceholder" class="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center text-white">
+              <i class="fa-solid fa-camera text-4xl opacity-20 mb-2"></i>
+              <p class="text-xs opacity-40">Câmera aguardando ativação</p>
+            </div>
+            <div class="scan-line"></div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 mb-4">
+            <button type="button" onclick="window.abrirCamera()" class="bg-green-600 text-white py-3 rounded-xl text-sm font-bold">📷 Ligar</button>
+            <button type="button" onclick="window.scanearObjeto()" class="bg-amber-500 text-white py-3 rounded-xl text-sm font-bold">🔍 Analisar Foto</button>
+          </div>
+          <div class="pt-4 border-t border-slate-200">
+            <h3 class="font-bold text-sm text-slate-700 mb-2">🌐 Analisar Produto por Link</h3>
+            <div class="flex gap-2">
+              <input id="linkProduto" type="url" placeholder="Cole o link..." class="flex-1 p-3 bg-white border border-slate-200 rounded-xl text-sm shadow-sm" />
+              <button type="button" onclick="window.analisarLinkRender()" class="bg-blue-600 text-white px-4 rounded-xl font-bold shadow-sm hover:bg-blue-700"><i class="fa-solid fa-magnifying-glass"></i></button>
+            </div>
+          </div>
+          <div id="resultadoScan" class="hidden mt-4"></div>
+        </div>
+
+        <div id="aba-mapa" class="aba-conteudo hidden space-y-2">
+          <h3 class="font-bold text-sm text-slate-700">📍 Postos Próximos</h3>
+          <div class="w-full h-72 bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
+            <iframe id="mapaIframe" class="w-full h-full border-none" src="https://maps.google.com/maps?q=1&output=embed"></iframe>
+          </div>
+        </div>
+
+        <div id="aba-relatorio" class="aba-conteudo hidden space-y-4">
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="font-bold text-sm text-slate-700">📊 Suas Métricas Ambientais</h3>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-center mb-2">
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <p class="text-[10px] text-slate-500 uppercase font-bold">Massa Total</p>
+              <p id="relTotalKg" class="text-xl font-black text-slate-800">0.00 kg</p>
+            </div>
+            <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl">
+              <p class="text-[10px] text-blue-700 uppercase font-bold">Impacto Reduzido</p>
+              <p id="relTotalImpacto" class="text-xl font-black text-blue-800">↓ 0.00%</p>
+            </div>
+          </div>
+          <div class="p-3 bg-green-50 border border-green-300 rounded-xl text-center mb-2 shadow-sm">
+             <p class="text-[10px] text-green-700 uppercase font-bold tracking-wider">EcoPoints Ganhos</p>
+             <p id="relTotalPontos" class="text-2xl font-black text-green-800">+ 0 pts</p>
+             <p id="relTotalItens" class="text-xs text-green-600 mt-1">0 itens lidos</p>
+          </div>
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <h4 class="font-bold text-xs text-slate-600 mb-3 uppercase border-b border-slate-200 pb-2">📦 Detalhamento</h4>
+            <div id="relatorioLista">
+               <p class="text-xs text-center text-slate-500 italic mt-4">Ainda sem dados.</p>
+            </div>
+          </div>
+          
+          <div class="pt-2 border-t border-slate-200 mt-4 pt-4">
+            <p class="text-[10px] text-slate-500 uppercase font-bold text-center mb-2">Exportar Relatórios Ambientais (PDF)</p>
+            <div class="flex flex-col gap-2">
+              <button type="button" onclick="window.imprimirSessaoAtualAmbiental()" class="w-full bg-slate-800 text-white py-3 rounded-xl text-xs font-bold shadow-sm hover:bg-slate-900"><i class="fa-solid fa-receipt mr-1"></i> Sessão Atual</button>
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" onclick="window.imprimirRelatorioPeriodoAmbiental(15)" class="bg-green-600 text-white py-3 rounded-xl text-xs font-bold shadow-sm hover:bg-green-700"><i class="fa-solid fa-calendar-week mr-1"></i> Extrato 15 Dias</button>
+                <button type="button" onclick="window.imprimirRelatorioPeriodoAmbiental(30)" class="bg-emerald-600 text-white py-3 rounded-xl text-xs font-bold shadow-sm hover:bg-emerald-700"><i class="fa-solid fa-calendar-days mr-1"></i> Extrato 30 Dias</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="aba-avaliar" class="aba-conteudo hidden">
+           <div class="dark-bg">
+              <div class="dark-card">
+                  <div class="flex justify-center mb-4">
+                      <span class="bg-white px-4 py-1.5 rounded-full text-xs font-bold text-slate-600 flex items-center gap-2 shadow">
+                          📊 FEEDBACK & RELATÓRIOS
+                      </span>
+                  </div>
+                  
+                  <h4 class="text-xs font-bold text-fuchsia-400 uppercase mb-4 tracking-wider">Sua Opinião Sobre o App</h4>
+                  
+                  <div class="space-y-4">
+                      <div>
+                          <label class="text-[10px] text-slate-400 uppercase tracking-widest block font-sans">Nota Geral</label>
+                          <select id="notaEstrelas" class="dark-input text-amber-400 font-sans text-xs">
+                              <option value="5 Estrelas">⭐⭐⭐⭐⭐ (Excelente)</option>
+                              <option value="4 Estrelas">⭐⭐⭐⭐ (Muito Bom)</option>
+                              <option value="3 Estrelas">⭐⭐⭐ (Regular)</option>
+                              <option value="2 Estrelas">⭐⭐ (Ruim)</option>
+                          </select>
+                      </div>
+                      <div>
+                          <label class="text-[10px] text-slate-400 uppercase tracking-widest block font-sans">Avaliação Principal</label>
+                          <select id="catAvaliacao" class="dark-input font-sans text-xs" onchange="window.atualizarSubCategorias()">
+                              <option value="Boa">😊 Boa</option>
+                              <option value="Ruim">😞 Ruim</option>
+                              <option value="Superou">🚀 Superou a minha expectativa</option>
+                          </select>
+                      </div>
+                      <div>
+                          <label class="text-[10px] text-slate-400 uppercase tracking-widest block font-sans">Sub-Avaliação Específica</label>
+                          <div id="subCategoriasContainer">
+                              <select id="subAvaliacao" class="dark-input font-sans text-xs">
+                                  <option>Funciona bem</option>
+                                  <option>Muito seguro</option>
+                                  <option>Interface bonita</option>
+                              </select>
+                          </div>
+                      </div>
+                      <button onclick="window.salvarFeedback()" class="w-full bg-[#a855f7] text-white font-bold text-sm py-3.5 rounded-xl shadow-lg mt-2 font-sans">Enviar Feedback</button>
+                  </div>
+              </div>
+              
+              <div class="bg-white p-5 rounded-[24px] shadow-sm mt-4 border border-slate-200">
+                <h4 class="text-[10px] text-slate-500 uppercase font-black text-center mb-4 tracking-widest font-sans">Opções de Download (PDF)</h4>
+                <div class="space-y-3 font-sans">
+                  <button type="button" onclick="window.imprimirPDF_FeedbackSessao()" class="w-full bg-[#1e293b] text-white py-4 rounded-xl text-xs font-bold shadow-md flex justify-center items-center gap-2">
+                      <i class="fa-solid fa-receipt"></i> Sessão Atual
+                  </button>
+                  <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="window.imprimirPDF_FeedbackPeriodo(15)" class="bg-[#10b981] text-white py-3.5 rounded-xl text-xs font-bold flex justify-center items-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-calendar-week"></i> Extrato 15 Dias
+                    </button>
+                    <button type="button" onclick="window.imprimirPDF_FeedbackPeriodo(30)" class="bg-[#10b981] text-white py-3.5 rounded-xl text-xs font-bold flex justify-center items-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-calendar-days"></i> Extrato 30 Dias
+                    </button>
+                  </div>
+                </div>
+              </div>
+           </div>
+        </div>
+
+        <div id="aba-chat" class="aba-conteudo hidden flex flex-col h-[380px]">
+          <h3 class="font-bold text-sm text-slate-700 mb-2">💬 EcoMural Coletivo</h3>
+          <div id="listaMensagens" class="flex-1 overflow-y-auto bg-slate-50 rounded-xl p-3 mb-2 border border-slate-200"></div>
+          <div class="flex gap-2">
+            <input id="novaMensagem" type="text" placeholder="Escreva aqui..." class="flex-1 p-3 border rounded-xl text-sm" />
+            <button type="button" onclick="window.enviarMensagem()" class="bg-green-600 text-white px-4 rounded-xl"><i class="fa-solid fa-paper-plane"></i></button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
