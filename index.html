@@ -27,7 +27,22 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// ✅ CORREÇÃO: Deixa funções do Firebase acessíveis para os botões
+const firebaseConfig = {
+  apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw",
+  authDomain: "ecoscan-96a80.firebaseapp.com",
+  projectId: "ecoscan-96a80",
+  storageBucket: "ecoscan-96a80.appspot.com",
+  messagingSenderId: "532877468700",
+  appId: "1:532877468700:web:689d25217275313341abd9",
+  measurementId: "G-ZN2B54CN07"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ✅ CORREÇÃO: Deixa auth e funções acessíveis para os botões
+window.auth = auth;
 window.signInWithEmailAndPassword = signInWithEmailAndPassword;
 window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
 window.sendPasswordResetEmail = sendPasswordResetEmail;
@@ -44,20 +59,6 @@ window.addEventListener("unhandledrejection", (e) => {
   alert("ALERTA DE SISTEMA: " + (e.reason?.message || e.reason));
   e.preventDefault();
 });
-
-const firebaseConfig = {
-  apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw",
-  authDomain: "ecoscan-96a80.firebaseapp.com",
-  projectId: "ecoscan-96a80",
-  storageBucket: "ecoscan-96a80.appspot.com",
-  messagingSenderId: "532877468700",
-  appId: "1:532877468700:web:689d25217275313341abd9",
-  measurementId: "G-ZN2B54CN07"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
 
 const NYCKEL_FUNCTION_ID = "qt82mge0uiwoay8p";
 const NYCKEL_CLIENT_ID = "u1wgqv728lzvi1xzovisl4tvij1oak7i";
@@ -554,8 +555,8 @@ window.onload = function() {
 };
 
 window.fecharBanner = () => {
-    const banner = document.getElementById('banner-beta');
-    if(banner) banner.style.top = '-100px';
+    const banner = document.getElementById("banner-beta");
+    if(banner) banner.style.top = "-100px";
     sessionStorage.setItem('bannerFechado', 'true');
 };
 </script>
@@ -570,7 +571,7 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
 @keyframes scan{ 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
 
 .dark-bg { background: #1e293b; border-radius: 20px; padding: 1px; }
-.dark-card { background: #1e293b; border-radius: 20px; padding: 24px; border: 1px solid #334155; }
+.dark-card { background: #1e293b; border-radius: 20px; padding:24px; border: 1px solid #334155; }
 .dark-input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 12px; color: white; outline: none; margin-top: 4px; appearance: none;}
 .dark-input:focus { border-color: #a855f7; }
 
@@ -756,34 +757,4 @@ body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-
                   <option>5 Estrelas</option>
                   <option>4 Estrelas</option>
                   <option>3 Estrelas</option>
-                  <option>2 Estrelas</option>
-                  <option>1 Estrela</option>
-                </select>
-                <select id="catAvaliacao" onchange="atualizarSubCategorias()" class="dark-input text-xs">
-                    <option value="Boa">Boa</option>
-                    <option value="Ruim">Ruim
-                      <option value="Superou">Superou</option>
-                </select>
-                <div id="subCategoriasContainer"></div>
-                
-                <button onclick="salvarFeedback()" class="w-full bg-purple-600 text-white font-bold py-3 mt-4 rounded-xl">Enviar Feedback</button>
-                
-                <div class="grid grid-cols-3 gap-2 mt-2">
-                    <button onclick="imprimirAvaliacaoHoje()" class="bg-white text-slate-900 py-3 rounded-xl font-bold text-[10px]">Hoje</button>
-                    <button onclick="imprimirAvaliacao15Dias()" class="bg-white text-slate-900 py-3 rounded-xl font-bold text-[10px]">15 Dias</button>
-                    <button onclick="imprimirAvaliacao30Dias()" class="bg-white text-slate-900 py-3 rounded-xl font-bold text-[10px]">30 Dias</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="aba-mural" class="aba-conteudo hidden flex flex-col h-[380px]">
-          <h3 class="font-bold text-sm text-slate-700 mb-2">💬 EcoMural Coletivo</h3>
-          <div id="listaMensagens" class="flex-1 overflow-y-auto bg-slate-50 rounded-xl p-3 mb-2 border border-slate-200"></div>
-          <div class="flex gap-2">
-            <input id="novaMensagem" type="text" placeholder="Escreva aqui..." class="flex-1 p-3 border rounded-xl text-sm" />
-            <button type="button" onclick="enviarMensagem()" class="bg-green-600 text-white px-4 rounded-xl"><i class="fa-solid fa-paper-plane"></i></button>
-          </div>
-        </div>
-
-      </div> </div> </div> </div> </body>
-</html>
+                  <option>2
