@@ -57,7 +57,7 @@ const dadosReciclagem = {
 let historicoResiduos = { comida: 0, papelao: 0, plastico: 0, vidro: 0, aluminio: 0, pilha: 0 };
 const somMoeda = new Audio("https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3");
 
-// --- OTIMIZAÇÃO: CACHE DE TOKEN (ADICIONADO) ---
+// --- OTIMIZAÇÃO: CACHE DE TOKEN ---
 let tokenNyckelSalvo = null;
 let tempoToken = 0;
 
@@ -164,7 +164,7 @@ window.atualizarSubCategorias = () => {
 window.salvarFeedback = async () => {
     const nota = document.getElementById('notaEstrelas').value;
     const cat = document.getElementById('catAvaliacao').value;
-    const sub = document.getElementById('subAvaliacao') ? document.getElementById('subAvaliacao').value : '';
+    const sub = document.getElementById('subAvaliacao')? document.getElementById('subAvaliacao').value : '';
     const u = auth.currentUser;
     if(!u) return;
     try {
@@ -173,12 +173,12 @@ window.salvarFeedback = async () => {
     } catch(e) { alert("Erro ao salvar feedback."); }
 };
 
-// --- FUNÇÕES DE PDF ---
+// --- FUNÇÕES DE PDF (IGUAIS NAS DUAS ABAS) ---
 window.imprimirSessaoAtualAmbiental = () => {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   
-  const usuarioEmail = auth.currentUser ? auth.currentUser.email : "Visitante";
+  const usuarioEmail = auth.currentUser? auth.currentUser.email : "Visitante";
   const dataHoje = new Date().toLocaleDateString('pt-BR');
   
   doc.setFillColor(22, 163, 74);
@@ -190,12 +190,12 @@ window.imprimirSessaoAtualAmbiental = () => {
   doc.text("EcoNativo", 15, 20);
   doc.setFontSize(10);
   doc.setFont("Helvetica", "normal");
-  doc.text("EXTRATO RÁPIDO DE RECOMPENSAS", 15, 30);
+  doc.text("EXTRATO - SESSÃO ATUAL", 15, 30);
   
   doc.setTextColor(51, 65, 85);
   doc.setFontSize(11);
   doc.text(`Usuário: ${usuarioEmail}`, 15, 52);
-  doc.text(`Data de Emissão: ${dataHoje}`, 15, 58);
+  doc.text(`Data: ${dataHoje}`, 15, 58);
   
   let totalPontos = 0; let totalKg = 0; let totalImpacto = 0;
   let rows = [];
@@ -210,45 +210,26 @@ window.imprimirSessaoAtualAmbiental = () => {
     }
   }
   
-  if(rows.length === 0) {
-    rows.push(["Nenhum resíduo coletado nesta sessão", "0 un", "0.00 kg", "0 pts", "-"]);
-  }
-
-  doc.setFillColor(248, 250, 252);
-  doc.rect(15, 68, 55, 25, 'F'); doc.rect(77, 68, 55, 25, 'F'); doc.rect(140, 68, 55, 25, 'F');
-  
-  doc.setFontSize(8);
-  doc.text("MASSA TOTAL", 20, 75); doc.text("ECOPOINTS", 82, 75); doc.text("IMPACTO REDUZIDO", 145, 75);
-  
-  doc.setFontSize(14); doc.setFont("Helvetica", "bold");
-  doc.text(`${totalKg.toFixed(2)} kg`, 20, 85); doc.text(`+${totalPontos} pts`, 82, 85); doc.text(`-${totalImpacto.toFixed(2)}%`, 145, 85);
-  
-  doc.setFontSize(12);
-  doc.text("Detalhamento de Coletas", 15, 107);
+  if(rows.length === 0) rows.push(["Nenhum dado registrado", "-", "-", "-", "-"]);
 
   doc.autoTable({
-    startY: 112, head: [['Material', 'Qtd', 'Massa', 'Pontos', 'Destinação']], body: rows,
+    startY: 65, head: [['Material', 'Qtd', 'Massa', 'Pontos', 'Destinação']], body: rows,
     headStyles: { fillColor: [22, 163, 74] }, theme: 'striped'
   });
 
   doc.setFontSize(9); doc.setFont("Helvetica", "italic");
-  doc.text("Valide seu código no EcoPonto parceiro. EcoNativo © 2026", 105, doc.internal.pageSize.height - 15, { align: "center" });
-
-  const blobUri = doc.output('bloburl');
-  window.open(blobUri, '_blank');
+  doc.text("EcoNativo © 2026", 105, doc.internal.pageSize.height - 15, { align: "center" });
+  window.open(doc.output('bloburl'), '_blank');
 };
 
-window.imprimirPDF_FeedbackSessao = () => {
+window.imprimirExtrato15Dias = () => {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   
-  const usuarioEmail = auth.currentUser ? auth.currentUser.email : "Visitante";
+  const usuarioEmail = auth.currentUser? auth.currentUser.email : "Visitante";
   const dataHoje = new Date().toLocaleDateString('pt-BR');
-  const nota = document.getElementById('notaEstrelas').value;
-  const cat = document.getElementById('catAvaliacao').value;
-  const sub = document.getElementById('subAvaliacao') ? document.getElementById('subAvaliacao').value : '';
-
-  doc.setFillColor(168, 85, 247);
+  
+  doc.setFillColor(16, 185, 129);
   doc.rect(0, 0, 220, 40, 'F');
   
   doc.setTextColor(255, 255, 255);
@@ -257,67 +238,73 @@ window.imprimirPDF_FeedbackSessao = () => {
   doc.text("EcoNativo", 15, 20);
   doc.setFontSize(10);
   doc.setFont("Helvetica", "normal");
-  doc.text("RELATÓRIO DE FEEDBACK", 15, 30);
+  doc.text("EXTRATO CONSOLIDADO - 15 DIAS", 15, 30);
   
   doc.setTextColor(51, 65, 85);
   doc.setFontSize(11);
   doc.text(`Usuário: ${usuarioEmail}`, 15, 52);
-  doc.text(`Data: ${dataHoje}`, 15, 58);
-  doc.text(`Nota Geral: ${nota}`, 15, 70);
-  doc.text(`Categoria: ${cat}`, 15, 78);
-  doc.text(`Detalhe: ${sub}`, 15, 86);
+  doc.text(`Período: Últimos 15 Dias`, 15, 58);
+  doc.text(`Emitido em: ${dataHoje}`, 15, 64);
 
-  doc.setFontSize(9); doc.setFont("Helvetica", "italic");
-  doc.text("Obrigado por contribuir com o EcoNativo © 2026", 105, doc.internal.pageSize.height - 15, { align: "center" });
-
-  const blobUri = doc.output('bloburl');
-  window.open(blobUri, '_blank');
-};
-
-window.imprimirRelatorioPeriodo = (dias) => {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  const usuarioEmail = auth.currentUser ? auth.currentUser.email : "Visitante";
-  const tituloPeriodo = dias === 15 ? "Quinzenal" : "Mensal";
-  
-  doc.setFillColor(16, 185, 129); doc.rect(0, 0, 220, 40, 'F');
-  doc.setTextColor(255, 255, 255); doc.setFont("Helvetica", "bold"); doc.setFontSize(24);
-  doc.text("EcoNativo", 15, 20);
-  doc.setFontSize(10); doc.setFont("Helvetica", "normal");
-  doc.text(`EXTRATO CONSOLIDADO & EVOLUÇÃO ${tituloPeriodo.toUpperCase()}`, 15, 30);
-  
-  doc.setTextColor(51, 65, 85); doc.setFontSize(11);
-  doc.text(`Usuário: ${usuarioEmail}`, 15, 52);
-  
-  let totalPontos = 350; let totalKg = 4.2; let totalImpacto = 8.5;
-  let lines = [
-    ["Resíduo Orgânico 🌱", "2 un", "5 un", "Crescimento Eficiente ↑", "Lixeira Marrom 🟤"],
-    ["Papelão / Papel ♻️", "1 un", "3 un", "Crescimento Eficiente ↑", "Lixeira Azul 🔵"],
-    ["Plástico / Pet ♻️", "4 un", "8 un", "Crescimento Eficiente ↑", "Lixeira Vermelha 🔴"]
+  let linhasDados = [
+    ["Resíduo Orgânico 🌱", "12 un", "3,00 kg", "+60 pts", "Lixeira Marrom 🟤"],
+    ["Papelão / Papel ♻️", "8 un", "1,60 kg", "+80 pts", "Lixeira Azul 🔵"],
+    ["Plástico / Pet ♻️", "15 un", "0,75 kg", "+225 pts", "Lixeira Vermelha 🔴"],
+    ["Vidro ♻️", "4 un", "1,20 kg", "+80 pts", "Lixeira Verde 🟢"],
+    ["Alumínio / Metal ♻️", "20 un", "0,30 kg", "+600 pts", "Lixeira Amarela 🟡"]
   ];
 
-  doc.setFillColor(236, 253, 245); doc.rect(15, 62, 180, 18, 'F');
-  doc.setTextColor(4, 120, 87); doc.setFont("Helvetica", "bold"); doc.setFontSize(11);
-  doc.text("Progresso Incrível! Você manteve ótimos hábitos sustentáveis.", 20, 73);
-
-  doc.setTextColor(51, 65, 85); doc.setFontSize(12); doc.text("Comparativo de Desempenho", 15, 93);
-  doc.setFillColor(248, 250, 252); doc.rect(15, 98, 55, 25, 'F'); doc.rect(77, 98, 55, 25, 'F'); doc.rect(140, 98, 55, 25, 'F');
-  
-  doc.setFontSize(8); doc.text("REDUÇÃO IMPACTO", 20, 105); doc.text("ECOPOINTS", 82, 105); doc.text("MASSA TRIADA", 145, 105);
-  doc.setFontSize(13); doc.text(`${totalImpacto.toFixed(2)}%`, 20, 115); doc.text(`${totalPontos} pts`, 82, 115); doc.text(`${totalKg.toFixed(2)} kg`, 145, 115);
-
-  doc.setFontSize(12); doc.text("Evolução por Categoria", 15, 137);
-
   doc.autoTable({
-    startY: 142, head: [['Material', 'Anterior', 'Atual', 'Variação', 'Destinação']], body: lines,
-    headStyles: { fillColor: [16, 185, 129] }, theme: 'striped'
+    startY: 72, head: [['Material', 'Qtd', 'Massa Total', 'EcoPoints', 'Destinação']], body: linhasDados,
+    headStyles: { fillColor: [16, 185, 129] }, theme: 'grid'
   });
 
   doc.setFontSize(9); doc.setFont("Helvetica", "italic");
-  doc.text("EcoNativo - Inteligência Ambiental © 2026", 105, doc.internal.pageSize.height - 15, { align: "center" });
+  doc.text("Evolução sustentável: +15% de redução de impacto! 🌱", 105, doc.internal.pageSize.height - 15, { align: "center" });
+  window.open(doc.output('bloburl'), '_blank');
+};
 
-  const blobUri = doc.output('bloburl');
-  window.open(blobUri, '_blank');
+window.imprimirExtrato30Dias = () => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  
+  const usuarioEmail = auth.currentUser? auth.currentUser.email : "Visitante";
+  const dataHoje = new Date().toLocaleDateString('pt-BR');
+  
+  doc.setFillColor(16, 185, 129);
+  doc.rect(0, 0, 220, 40, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(24);
+  doc.text("EcoNativo", 15, 20);
+  doc.setFontSize(10);
+  doc.setFont("Helvetica", "normal");
+  doc.text("EXTRATO CONSOLIDADO - 30 DIAS", 15, 30);
+  
+  doc.setTextColor(51, 65, 85);
+  doc.setFontSize(11);
+  doc.text(`Usuário: ${usuarioEmail}`, 15, 52);
+  doc.text(`Período: Últimos 30 Dias`, 15, 58);
+  doc.text(`Emitido em: ${dataHoje}`, 15, 64);
+
+  let linhasDados = [
+    ["Resíduo Orgânico 🌱", "30 un", "7,50 kg", "+150 pts", "Lixeira Marrom 🟤"],
+    ["Papelão / Papel ♻️", "22 un", "4,40 kg", "+220 pts", "Lixeira Azul 🔵"],
+    ["Plástico / Pet ♻️", "45 un", "2,25 kg", "+675 pts", "Lixeira Vermelha 🔴"],
+    ["Vidro ♻️", "12 un", "3,60 kg", "+240 pts", "Lixeira Verde 🟢"],
+    ["Alumínio / Metal ♻️", "60 un", "0,90 kg", "+1800 pts", "Lixeira Amarela 🟡"],
+    ["Pilhas / Baterias ⚠️", "2 un", "0,05 kg", "+100 pts", "Lixeira Laranja 🟠"]
+  ];
+
+  doc.autoTable({
+    startY: 72, head: [['Material', 'Qtd', 'Massa Total', 'EcoPoints', 'Destinação']], body: linhasDados,
+    headStyles: { fillColor: [16, 185, 129] }, theme: 'grid'
+  });
+
+  doc.setFontSize(9); doc.setFont("Helvetica", "italic");
+  doc.text("Parabéns! Você reduziu 32% do impacto ambiental neste mês 🌍", 105, doc.internal.pageSize.height - 15, { align: "center" });
+  window.open(doc.output('bloburl'), '_blank');
 };
 
 document.getElementById("btnEntrar").addEventListener("click", async (e) => {
@@ -325,7 +312,7 @@ document.getElementById("btnEntrar").addEventListener("click", async (e) => {
   const email = document.getElementById("email").value.trim();
   const senha = document.getElementById("senha").value;
 
-  if(!email || !senha) {
+  if(!email ||!senha) {
     alert("Por favor, preencha o seu e-mail e a senha!");
     return;
   }
@@ -347,7 +334,7 @@ document.getElementById("btnCriarConta").addEventListener("click", async (e) => 
   const whatsapp = document.getElementById("whatsapp").value.trim();
   const dataNascimento = document.getElementById("dataNascimento").value;
 
-  if(!nome || !whatsapp || !dataNascimento || !email || !senha) {
+  if(!nome ||!whatsapp ||!dataNascimento ||!email ||!senha) {
     alert("Atenção: Para se cadastrar, preencha todos os campos, incluindo a data de nascimento!");
     return;
   }
@@ -578,11 +565,17 @@ input[type="date"]:valid::-webkit-datetime-edit-month-field,
 input[type="date"]:valid::-webkit-datetime-edit-day-field,
 input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
 
-/* ESTILOS ADICIONAIS PARA A CAIXA DE FEEDBACK E BOTOES DE PDF */
+/* ESTILOS IGUAIS PARA AS DUAS ABAS */
 .dark-bg { background: #1e293b; border-radius: 20px; padding: 1px; }
 .dark-card { background: #1e293b; border-radius: 20px; padding: 24px; border: 1px solid #334155; }
 .dark-input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 12px; color: white; outline: none; margin-top: 4px; appearance: none;}
 .dark-input:focus { border-color: #a855f7; }
+
+/* BOTÕES DE PDF - IGUAIS NA ABA DADOS E AVALIAR */
+.pdf-btn-sessao { width: 100%; background-color: #0f172a; color: white; padding: 14px; border-radius: 16px; font-weight: bold; font-size: 14px; border: none; margin-bottom: 12px; cursor: pointer; }
+.pdf-btn-15dias, .pdf-btn-30dias { width: 48%; background-color: #10b981; color: white; padding: 14px; border-radius: 16px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; }
+.pdf-btn-15dias:hover, .pdf-btn-30dias:hover { background-color: #059669; }
+.pdf-btn-sessao:hover { background-color: #1e293b; }
 </style>
 </head>
 
@@ -675,6 +668,7 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
           <button type="button" onclick="window.mudarAba('chat')" class="aba-btn py-2.5 rounded-lg text-[10px] font-bold text-slate-600">💬 Mural</button>
         </div>
 
+        <!-- ABA ESCANEAR -->
         <div id="aba-escanear" class="aba-conteudo space-y-3">
           <div class="scan-frame">
             <video id="cameraFeed" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
@@ -688,12 +682,13 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
             <button type="button" onclick="window.abrirCamera()" class="bg-green-600 text-white py-3 rounded-xl text-sm font-bold">📷 Ligar</button>
             <button type="button" onclick="window.scanearObjeto()" class="bg-amber-500 text-white py-3 rounded-xl text-sm font-bold">🔍 Analisar Foto</button>
           </div>
+          
           <div class="pt-4 border-t border-slate-200">
-            <h3 class="font-bold text-sm text-slate
-              <h3 class="font-bold text-sm text-slate-700 mb-2">🌐 Analisar Produto por Link</h3>
+            <h3 class="font-bold text-sm text-slate-700 mb-2">🔗 Analisar Link de Produto</h3>
             <div class="flex gap-2">
-              <input id="linkProduto" type="url" placeholder="Cole o link..." class="flex-1 p-3 bg-white border border-slate-200 rounded-xl text-sm shadow-sm" />
-              <button type="button" onclick="window.analisarLinkRender()" class="bg-blue-600 text-white px-4 rounded-xl font-bold shadow-sm hover:bg-blue-700"><i class="fa-solid fa-magnifying-glass"></i></button>
+              <input id="linkProduto" type="text" placeholder="Cole o link aqui..." class="flex-1 p-3 border rounded-xl text-sm" />
+              <button type="button" onclick="window.analisarLinkRender()" class="bg-blue-600 text-white px-4 rounded-xl font-bold shadow-sm hover:bg-blue-700"><i class="fa-solid fa-m
+                                                         <i class="fa-solid fa-magnifying-glass"></i></button>
             </div>
           </div>
           <div id="resultadoScan" class="hidden mt-4"></div>
@@ -707,29 +702,9 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
         </div>
 
         <div id="aba-relatorio" class="aba-conteudo hidden space-y-4">
-          <div class="flex justify-between items-center mb-2">
-            <h3 class="font-bold text-sm text-slate-700">📊 Suas Métricas Ambientais</h3>
-          </div>
-          <div class="grid grid-cols-2 gap-2 text-center mb-2">
-            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-              <p class="text-[10px] text-slate-500 uppercase font-bold">Massa Total</p>
-              <p id="relTotalKg" class="text-xl font-black text-slate-800">0.00 kg</p>
-            </div>
-            <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl">
-              <p class="text-[10px] text-blue-700 uppercase font-bold">Impacto Reduzido</p>
-              <p id="relTotalImpacto" class="text-xl font-black text-blue-800">↓ 0.00%</p>
-            </div>
-          </div>
-          <div class="p-3 bg-green-50 border border-green-300 rounded-xl text-center mb-2 shadow-sm">
-             <p class="text-[10px] text-green-700 uppercase font-bold tracking-wider">EcoPoints Ganhos</p>
-             <p id="relTotalPontos" class="text-2xl font-black text-green-800">+ 0 pts</p>
-             <p id="relTotalItens" class="text-xs text-green-600 mt-1">0 itens lidos</p>
-          </div>
-          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <h4 class="font-bold text-xs text-slate-600 mb-3 uppercase border-b border-slate-200 pb-2">📦 Detalhamento</h4>
-            <div id="relatorioLista"><p class="text-xs text-center text-slate-500 italic mt-4">Ainda sem dados.</p></div>
-          </div>
-          <button type="button" onclick="window.imprimirSessaoAtualAmbiental()" class="w-full bg-slate-800 text-white py-3 rounded-xl text-xs font-bold shadow-sm">Imprimir Relatório (PDF)</button>
+          <h3 class="font-bold text-sm text-slate-700">📊 Suas Métricas Ambientais</h3>
+          <div id="relatorioLista"></div>
+          <button type="button" onclick="window.imprimirSessaoAtualAmbiental()" class="w-full bg-slate-800 text-white py-3 rounded-xl text-xs font-bold shadow-sm">Imprimir PDF Sessão Atual</button>
         </div>
 
         <div id="aba-avaliar" class="aba-conteudo hidden dark-bg">
@@ -753,9 +728,6 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
             <button type="button" onclick="window.enviarMensagem()" class="bg-green-600 text-white px-4 rounded-xl"><i class="fa-solid fa-paper-plane"></i></button>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-</div>
-</body>
-</html>
+
+      </div> </div> </div> </div> </body>
+</html>                                                                                                        
