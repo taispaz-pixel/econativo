@@ -23,9 +23,17 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// --- SISTEMA DE ALARME DE EMERGÊNCIA NATIVO ---
-window.addEventListener("error", (e) => alert("ALERTA DE ERRO GERAL: " + e.message));
-window.addEventListener("unhandledrejection", (e) => alert("ALERTA DE SISTEMA: " + (e.reason.message || e.reason)));
+// --- SISTEMA DE ALARME DE ERRO CORRIGIDO ---
+window.addEventListener("error", (e) => {
+  console.error("ERRO:", e.message, e.error);
+  alert("ALERTA DE ERRO GERAL: " + e.message);
+  e.preventDefault();
+});
+window.addEventListener("unhandledrejection", (e) => {
+  console.error("ERRO PROMESSA:", e.reason);
+  alert("ALERTA DE SISTEMA: " + (e.reason?.message || e.reason));
+  e.preventDefault();
+});
 
 const firebaseConfig = {
   apiKey: "AIzaSyA0TLcy1zIAXwzgeYvmdKoqe04hPey1KXw",
@@ -57,22 +65,33 @@ const dadosReciclagem = {
 let historicoResiduos = { comida: 0, papelao: 0, plastico: 0, vidro: 0, aluminio: 0, pilha: 0 };
 const somMoeda = new Audio("https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3");
 
-// --- OTIMIZAÇÃO: CACHE DE TOKEN ---
 let tokenNyckelSalvo = null;
 let tempoToken = 0;
 
 function atualizarNivel() {
-  const xp = parseInt(document.getElementById("xpUsuario").innerText);
+  const elXP = document.getElementById("xpUsuario");
+  const elTitulo = document.getElementById("tituloUsuario");
+  if(!elXP || !elTitulo) return;
+
+  const xp = parseInt(elXP.innerText || 0);
   let titulo = "Iniciante Verde 🌱"; let cor = "text-green-200";
   if (xp >= 200 && xp < 500) { titulo = "Defensor Eco 🌿"; cor = "text-emerald-300"; }
   else if (xp >= 500 && xp < 1000) { titulo = "Guardião da Natureza 🌳"; cor = "text-yellow-300"; }
   else if (xp >= 1000) { titulo = "Mestre Sustentável 🌍"; cor = "text-amber-400"; }
-  document.getElementById("tituloUsuario").innerText = titulo;
-  document.getElementById("tituloUsuario").className = `mt-1 text-[10px] font-black uppercase tracking-wider ${cor}`;
+  
+  elTitulo.innerText = titulo;
+  elTitulo.className = `mt-1 text-[10px] font-black uppercase tracking-wider ${cor}`;
   atualizarRelatorioGrafico();
 }
 
 function atualizarRelatorioGrafico() {
+  const elTotalItens = document.getElementById("relTotalItens");
+  const elTotalKg = document.getElementById("relTotalKg");
+  const elTotalPontos = document.getElementById("relTotalPontos");
+  const elTotalImpacto = document.getElementById("relTotalImpacto");
+  const elLista = document.getElementById("relatorioLista");
+  if(!elTotalItens || !elTotalKg || !elTotalPontos || !elTotalImpacto || !elLista) return;
+
   let totalItens = 0; let totalKg = 0; let totalPontos = 0; let totalImpacto = 0;
   let htmlDetalhes = "";
   
@@ -97,25 +116,22 @@ function atualizarRelatorioGrafico() {
   
   if (totalItens === 0) { htmlDetalhes = `<p class="text-xs text-center text-slate-500 italic mt-4">Ainda sem dados cadastrados.</p>`; }
   
-  document.getElementById("relTotalItens").innerText = totalItens;
-  document.getElementById("relTotalKg").innerText = totalKg.toFixed(2) + " kg";
-  document.getElementById("relTotalPontos").innerText = totalPontos + " pts";
-  document.getElementById("relTotalImpacto").innerText = "↓ " + totalImpacto.toFixed(2) + "%";
-  document.getElementById("relatorioLista").innerHTML = htmlDetalhes;
+  elTotalItens.innerText = totalItens;
+  elTotalKg.innerText = totalKg.toFixed(2) + " kg";
+  elTotalPontos.innerText = totalPontos + " pts";
+  elTotalImpacto.innerText = "↓ " + totalImpacto.toFixed(2) + "%";
+  elLista.innerHTML = htmlDetalhes;
 }
 
 window.esquecerSenha = async () => {
-  const email = document.getElementById("email").value.trim();
-  if(!email) {
-    alert("Por favor, digite o seu e-mail no campo correspondente antes de clicar em recuperar senha!");
-    return;
-  }
+  const elEmail = document.getElementById("email");
+  if(!elEmail) return;
+  const email = elEmail.value.trim();
+  if(!email) { alert("Por favor, digite o seu e-mail!"); return; }
   try {
     await sendPasswordResetEmail(auth, email);
-    alert("Um e-mail oficial de redefinição de senha foi enviado para:\n" + email + "\n\nVerifique sua Caixa de Entrada ou pasta de Spam/Lixo Eletrônico.");
-  } catch (err) {
-    alert("Não conseguimos enviar o link de recuperação:\n" + err.message);
-  }
+    alert("Um e-mail de redefinição foi enviado para:\n" + email);
+  } catch (err) { alert("Erro: " + err.message); }
 };
 
 let modoAtual = "login";
@@ -126,6 +142,7 @@ window.alternarModoAuth = () => {
   const btnCriarConta = document.getElementById("btnCriarConta");
   const linkEsqueci = document.getElementById("linkEsqueci");
   const btnAlternarModo = document.getElementById("btnAlternarModo");
+  if(!camposCadastro || !tituloAuth || !btnEntrar || !btnCriarConta || !linkEsqueci || !btnAlternarModo) return;
 
   if (modoAtual === "login") {
     modoAtual = "cadastro";
@@ -146,34 +163,75 @@ window.alternarModoAuth = () => {
   }
 };
 
-// --- LÓGICA DO FEEDBACK DINÂMICO ---
 window.atualizarSubCategorias = () => {
-    const cat = document.getElementById('catAvaliacao').value;
-    const subContainer = document.getElementById('subCategoriasContainer');
+    const cat = document.getElementById("catAvaliacao")?.value;
+    const subContainer = document.getElementById("subCategoriasContainer");
+    if(!subContainer) return;
     let htmlSub = "";
     if(cat === "Boa") {
-        htmlSub = `<select id="subAvaliacao" class="dark-input"><option>Funciona bem</option><option>Muito seguro</option><option>Interface bonita</option></select>`;
+        htmlSub = `<select id="subAvaliacao" class="dark-input text-xs"><option>Funciona bem</option><option>Muito seguro</option><option>Interface bonita</option></select>`;
     } else if(cat === "Ruim") {
-        htmlSub = `<select id="subAvaliacao" class="dark-input"><option>Lento / Demorado</option><option>Muito complexo</option><option>Trava nas fotos</option></select>`;
+        htmlSub = `<select id="subAvaliacao" class="dark-input text-xs"><option>Lento / Demorado</option><option>Muito complexo</option><option>Trava nas fotos</option></select>`;
     } else if(cat === "Superou") {
-        htmlSub = `<select id="subAvaliacao" class="dark-input"><option>Excelente suporte</option><option>Iniciativa Incrível</option><option>Melhor que concorrentes</option></select>`;
+        htmlSub = `<select id="subAvaliacao" class="dark-input text-xs"><option>Excelente suporte</option><option>Iniciativa Incrível</option><option>Melhor que concorrentes</option></select>`;
     }
     subContainer.innerHTML = htmlSub;
 };
 
 window.salvarFeedback = async () => {
-    const nota = document.getElementById('notaEstrelas').value;
-    const cat = document.getElementById('catAvaliacao').value;
-    const sub = document.getElementById('subAvaliacao')? document.getElementById('subAvaliacao').value : '';
+    const nota = document.getElementById("notaEstrelas")?.value;
+    const cat = document.getElementById("catAvaliacao")?.value;
+    const sub = document.getElementById("subAvaliacao")?.value || "";
     const u = auth.currentUser;
-    if(!u) return;
+    if(!u || !nota || !cat) return;
     try {
         await addDoc(collection(db, "avaliacoes_app"), { usuario: u.email, nota: nota, categoria: cat, subcategoria: sub, data: serverTimestamp() });
-        alert(`Feedback salvo com sucesso no banco de dados!`);
+        alert(`Feedback salvo com sucesso!`);
     } catch(e) { alert("Erro ao salvar feedback."); }
 };
 
-// --- FUNÇÕES DE PDF (IGUAIS NAS DUAS ABAS) ---
+window.imprimirPDF_FeedbackSessao = () => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  
+  const usuarioEmail = auth.currentUser? auth.currentUser.email : "Visitante";
+  const dataHoje = new Date().toLocaleDateString('pt-BR');
+  const nota = document.getElementById("notaEstrelas")?.value || "Não informado";
+  const cat = document.getElementById("catAvaliacao")?.value || "Não informado";
+  const sub = document.getElementById("subAvaliacao")?.value || "Não informado";
+  
+  doc.setFillColor(126, 34, 206);
+  doc.rect(0, 0, 220, 40, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("Helvetica", "bold");
+  doc.setFontSize(24);
+  doc.text("EcoNativo", 15, 20);
+  doc.setFontSize(10);
+  doc.setFont("Helvetica", "normal");
+  doc.text("RELATÓRIO DE AVALIAÇÃO", 15, 30);
+  
+  doc.setTextColor(51, 65, 85);
+  doc.setFontSize(11);
+  doc.text(`Usuário: ${usuarioEmail}`, 15, 52);
+  doc.text(`Data: ${dataHoje}`, 15, 58);
+
+  let linhasDados = [
+    ["Nota dada", nota],
+    ["Categoria", cat],
+    ["Detalhe / Motivo", sub]
+  ];
+
+  doc.autoTable({
+    startY: 65, head: [['Item', 'Descrição']], body: linhasDados,
+    headStyles: { fillColor: [126, 34, 206] }, theme: 'grid'
+  });
+
+  doc.setFontSize(9); doc.setFont("Helvetica", "italic");
+  doc.text("Obrigado por nos ajudar a melhorar! 💜", 105, doc.internal.pageSize.height - 15, { align: "center" });
+  window.open(doc.output('bloburl'), '_blank');
+};
+
 window.imprimirSessaoAtualAmbiental = () => {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -307,44 +365,48 @@ window.imprimirExtrato30Dias = () => {
   window.open(doc.output('bloburl'), '_blank');
 };
 
-document.getElementById("btnEntrar").addEventListener("click", async (e) => {
+document.getElementById("btnEntrar")?.addEventListener("click", async (e) => {
   e.preventDefault();
-  const email = document.getElementById("email").value.trim();
-  const senha = document.getElementById("senha").value;
+  const elEmail = document.getElementById("email");
+  const elSenha = document.getElementById("senha");
+  if(!elEmail || !elSenha) return;
+  const email = elEmail.value.trim();
+  const senha = elSenha.value;
 
-  if(!email ||!senha) {
-    alert("Por favor, preencha o seu e-mail e a senha!");
-    return;
-  }
+  if(!email ||!senha) { alert("Preencha e-mail e senha!"); return; }
   try {
-    document.getElementById("btnEntrar").innerText = "Acessando...";
+    const btn = document.getElementById("btnEntrar");
+    if(btn) btn.innerText = "Acessando...";
     await signInWithEmailAndPassword(auth, email, senha);
-    document.getElementById("btnEntrar").innerText = "Entrar";
+    if(btn) btn.innerText = "Entrar";
   } catch(err) {
-    document.getElementById("btnEntrar").innerText = "Entrar";
+    const btn = document.getElementById("btnEntrar");
+    if(btn) btn.innerText = "Entrar";
     alert("ERRO AO ENTRAR:\n" + err.message);
   }
 });
 
-document.getElementById("btnCriarConta").addEventListener("click", async (e) => {
+document.getElementById("btnCriarConta")?.addEventListener("click", async (e) => {
   e.preventDefault();
-  const email = document.getElementById("email").value.trim();
-  const senha = document.getElementById("senha").value;
-  const nome = document.getElementById("nomeCompleto").value.trim();
-  const whatsapp = document.getElementById("whatsapp").value.trim();
-  const dataNascimento = document.getElementById("dataNascimento").value;
+  const elEmail = document.getElementById("email");
+  const elSenha = document.getElementById("senha");
+  const elNome = document.getElementById("nomeCompleto");
+  const elWhatsapp = document.getElementById("whatsapp");
+  const elNascimento = document.getElementById("dataNascimento");
+  if(!elEmail || !elSenha || !elNome || !elWhatsapp || !elNascimento) return;
 
-  if(!nome ||!whatsapp ||!dataNascimento ||!email ||!senha) {
-    alert("Atenção: Para se cadastrar, preencha todos os campos, incluindo a data de nascimento!");
-    return;
-  }
-  if(senha.length < 6) {
-    alert("Atenção: A senha precisa ter pelo menos 6 dígitos.");
-    return;
-  }
+  const email = elEmail.value.trim();
+  const senha = elSenha.value;
+  const nome = elNome.value.trim();
+  const whatsapp = elWhatsapp.value.trim();
+  const dataNascimento = elNascimento.value;
+
+  if(!nome ||!whatsapp ||!dataNascimento ||!email ||!senha) { alert("Preencha todos os campos!"); return; }
+  if(senha.length < 6) { alert("Senha precisa ter pelo menos 6 dígitos!"); return; }
 
   try {
-    document.getElementById("btnCriarConta").innerText = "Criando...";
+    const btn = document.getElementById("btnCriarConta");
+    if(btn) btn.innerText = "Criando...";
     const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
     const u = userCredential.user;
     
@@ -356,10 +418,11 @@ document.getElementById("btnCriarConta").addEventListener("click", async (e) => 
       dataCadastro: serverTimestamp()
     });
 
-    document.getElementById("btnCriarConta").innerText = "Criar Conta";
-    alert("Sua conta foi criada com sucesso! Seja bem-vinda ao EcoNativo, " + nome + "!");
+    if(btn) btn.innerText = "Criar Conta";
+    alert("Conta criada com sucesso! Bem-vindo(a), " + nome + "!");
   } catch(err) {
-    document.getElementById("btnCriarConta").innerText = "Criar Conta";
+    const btn = document.getElementById("btnCriarConta");
+    if(btn) btn.innerText = "Criar Conta";
     alert("ERRO AO CRIAR CONTA:\n" + err.message);
   }
 });
@@ -367,7 +430,8 @@ document.getElementById("btnCriarConta").addEventListener("click", async (e) => 
 window.mudarAba = (nome) => {
   document.querySelectorAll(".aba-conteudo").forEach(el => el.classList.add("hidden"));
   document.querySelectorAll(".aba-btn").forEach(el => el.classList.remove("bg-green-600", "text-white"));
-  document.getElementById(`aba-${nome}`).classList.remove("hidden");
+  const abaAtiva = document.getElementById(`aba-${nome}`);
+  if(abaAtiva) abaAtiva.classList.remove("hidden");
 
   const botoes = document.querySelectorAll(".aba-btn");
   if (nome === "escanear") botoes[0].classList.add("bg-green-600", "text-white");
@@ -383,27 +447,34 @@ window.mudarAba = (nome) => {
 window.logout = async () => { await signOut(auth); };
 
 onAuthStateChanged(auth, (u) => {
+  const loginBox = document.getElementById("loginBox");
+  const appContainer = document.getElementById("appContainer");
+  const usuarioEl = document.getElementById("usuario");
+  if(!loginBox || !appContainer || !usuarioEl) return;
+
   if (u) {
-    document.getElementById("loginBox").classList.add("hidden");
-    document.getElementById("appContainer").classList.remove("hidden");
-    document.getElementById("usuario").innerText = u.email;
+    loginBox.classList.add("hidden");
+    appContainer.classList.remove("hidden");
+    usuarioEl.innerText = u.email;
     carregarMensagens();
     atualizarNivel();
   } else {
-    document.getElementById("loginBox").classList.remove("hidden");
-    document.getElementById("appContainer").classList.add("hidden");
+    loginBox.classList.remove("hidden");
+    appContainer.classList.add("hidden");
     if(window.pararCamera) window.pararCamera();
   }
 });
 
 window.enviarMensagem = async () => {
-  const t = document.getElementById("novaMensagem").value.trim();
+  const elMsg = document.getElementById("novaMensagem");
   const u = auth.currentUser;
-  if(!u||!t) return;
+  if(!elMsg || !u) return;
+  const t = elMsg.value.trim();
+  if(!t) return;
   try{
     await addDoc(collection(db, "mensagens"), { usuario: u.email, texto: t, data: serverTimestamp() });
-    document.getElementById("novaMensagem").value = "";
-  } catch(e){ alert("Erro ao enviar mensagem no chat!"); }
+    elMsg.value = "";
+  } catch(e){ alert("Erro ao enviar mensagem!"); }
   };
 
 function carregarMensagens() {
@@ -423,27 +494,30 @@ let streamAtual = null;
 window.abrirCamera = async () => {
   const video = document.getElementById("cameraFeed");
   const placeholder = document.getElementById("cameraPlaceholder");
+  if(!video || !placeholder) return;
   try {
     streamAtual = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
     video.srcObject = streamAtual; video.classList.remove("hidden"); placeholder.classList.add("hidden");
-  } catch (err) { alert("O EcoNativo precisa de permissão para usar a sua câmera!"); }
+  } catch (err) { alert("Permita o uso da câmera!"); }
 };
 
 window.pararCamera = () => {
   if(streamAtual) {
     streamAtual.getTracks().forEach(t => t.stop());
-    document.getElementById("cameraFeed").classList.add("hidden");
-    document.getElementById("cameraPlaceholder").classList.remove("hidden");
+    const video = document.getElementById("cameraFeed");
+    const placeholder = document.getElementById("cameraPlaceholder");
+    if(video) video.classList.add("hidden");
+    if(placeholder) placeholder.classList.remove("hidden");
     streamAtual = null;
   }
 };
 
 window.mostrarNoMapa = (termoBusca) => {
-  document.getElementById("mapaIframe").src = `https://maps.google.com/maps?q=${termoBusca}&output=embed`;
+  const mapa = document.getElementById("mapaIframe");
+  if(mapa) mapa.src = `https://maps.google.com/maps?q=${termoBusca}&output=embed`;
   window.mudarAba('mapa');
 };
 
-// --- FUNÇÃO OTIMIZADA COM CACHE ---
 async function getNyckelToken() {
   if (tokenNyckelSalvo && (Date.now() - tempoToken < 3000000)) return tokenNyckelSalvo;
   const response = await fetch('https://www.nyckel.com/connect/token', {
@@ -457,9 +531,10 @@ async function getNyckelToken() {
 
 window.scanearObjeto = async () => {
   const resultado = document.getElementById("resultadoScan");
+  const video = document.getElementById("cameraFeed");
+  if(!resultado || !video) return;
   resultado.classList.remove("hidden");
   resultado.innerHTML = `<div class="text-center py-6"><i class="fa-solid fa-bolt text-4xl text-green-500 mb-3 animate-bounce"></i><p class="font-semibold text-slate-700 text-xs">Analisando na nuvem...</p></div>`;
-  const video = document.getElementById("cameraFeed");
   try {
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth; canvas.height = video.videoHeight;
@@ -488,7 +563,8 @@ window.scanearObjeto = async () => {
     const dadosObjeto = dadosReciclagem[maiorClasse];
     if (dadosObjeto) {
       somMoeda.play().catch(e => {});
-      document.getElementById("xpUsuario").innerText = parseInt(document.getElementById("xpUsuario").innerText) + 50;
+      const elXP = document.getElementById("xpUsuario");
+      if(elXP) elXP.innerText = parseInt(elXP.innerText) + 50;
       historicoResiduos[maiorClasse]++;
       atualizarNivel();
 
@@ -506,13 +582,15 @@ window.scanearObjeto = async () => {
           ${botaoMapa}
         </div>`;
     }
-  } catch (e) { alert("Erro de comunicação com a IA da Câmera!"); }
+  } catch (e) { alert("Erro de comunicação com a IA!"); }
 };
 
 window.analisarLinkRender = async () => {
-  const link = document.getElementById("linkProduto").value.trim();
-  if(!link) { alert("Por favor, cole um link primeiro!"); return; }
+  const elLink = document.getElementById("linkProduto");
   const resultado = document.getElementById("resultadoScan");
+  if(!elLink || !resultado) return;
+  const link = elLink.value.trim();
+  if(!link) { alert("Cole um link primeiro!"); return; }
   resultado.classList.remove("hidden");
   resultado.innerHTML = `<div class="text-center py-6"><i class="fa-solid fa-robot text-4xl text-blue-500 mb-3 animate-pulse"></i><p class="font-semibold text-slate-700 text-xs">A Inteligência está lendo o site...</p></div>`;
   try {
@@ -527,8 +605,8 @@ window.analisarLinkRender = async () => {
           <div class="flex items-center gap-3 mb-3"><span class="text-2xl">🤖</span><h4 class="font-bold text-blue-900 text-base">Análise da OpenAI</h4></div>
           <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">${data.analise}</p>
         </div>`;
-    } else { alert("Erro na Inteligência Artificial: " + data.erro); }
-  } catch (e) { alert("Falha na comunicação. O Servidor Render está desligado?"); }
+    } else { alert("Erro: " + data.erro); }
+  } catch (e) { alert("Falha na comunicação!"); }
 };
 
 window.onload = function() {
@@ -540,7 +618,8 @@ window.onload = function() {
 };
 
 window.fecharBanner = () => {
-    document.getElementById('banner-beta').style.top = '-100px';
+    const banner = document.getElementById('banner-beta');
+    if(banner) banner.style.top = '-100px';
     sessionStorage.setItem('bannerFechado', 'true');
 };
 </script>
@@ -565,13 +644,11 @@ input[type="date"]:valid::-webkit-datetime-edit-month-field,
 input[type="date"]:valid::-webkit-datetime-edit-day-field,
 input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
 
-/* ESTILOS IGUAIS PARA AS DUAS ABAS */
 .dark-bg { background: #1e293b; border-radius: 20px; padding: 1px; }
 .dark-card { background: #1e293b; border-radius: 20px; padding: 24px; border: 1px solid #334155; }
 .dark-input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 12px; color: white; outline: none; margin-top: 4px; appearance: none;}
 .dark-input:focus { border-color: #a855f7; }
 
-/* BOTÕES DE PDF - IGUAIS NA ABA DADOS E AVALIAR */
 .pdf-btn-sessao { width: 100%; background-color: #0f172a; color: white; padding: 14px; border-radius: 16px; font-weight: bold; font-size: 14px; border: none; margin-bottom: 12px; cursor: pointer; }
 .pdf-btn-15dias, .pdf-btn-30dias { width: 48%; background-color: #10b981; color: white; padding: 14px; border-radius: 16px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; }
 .pdf-btn-15dias:hover, .pdf-btn-30dias:hover { background-color: #059669; }
@@ -660,7 +737,8 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
         </div>
 
         <!-- MENU COM 5 ABAS -->
-        <div class="grid grid-cols-5 gap-1 bg-slate-100 p-1 rounded-xl">
+        <div class="grid grid-cols-5
+          <div class="grid grid-cols-5 gap-1 bg-slate-100 p-1 rounded-xl">
           <button type="button" onclick="window.mudarAba('escanear')" class="aba-btn py-2.5 rounded-lg text-[10px] font-bold bg-green-600 text-white">📷 Scan</button>
           <button type="button" onclick="window.mudarAba('mapa')" class="aba-btn py-2.5 rounded-lg text-[10px] font-bold text-slate-600">📍 Mapa</button>
           <button type="button" onclick="window.mudarAba('relatorio')" class="aba-btn py-2.5 rounded-lg text-[10px] font-bold text-slate-600">📊 Dados</button>
@@ -668,7 +746,6 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
           <button type="button" onclick="window.mudarAba('chat')" class="aba-btn py-2.5 rounded-lg text-[10px] font-bold text-slate-600">💬 Mural</button>
         </div>
 
-        <!-- ABA ESCANEAR -->
         <div id="aba-escanear" class="aba-conteudo space-y-3">
           <div class="scan-frame">
             <video id="cameraFeed" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
@@ -682,13 +759,11 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
             <button type="button" onclick="window.abrirCamera()" class="bg-green-600 text-white py-3 rounded-xl text-sm font-bold">📷 Ligar</button>
             <button type="button" onclick="window.scanearObjeto()" class="bg-amber-500 text-white py-3 rounded-xl text-sm font-bold">🔍 Analisar Foto</button>
           </div>
-          
           <div class="pt-4 border-t border-slate-200">
-            <h3 class="font-bold text-sm text-slate-700 mb-2">🔗 Analisar Link de Produto</h3>
+            <h3 class="font-bold text-sm text-slate-700 mb-2">🌐 Analisar Produto por Link</h3>
             <div class="flex gap-2">
-              <input id="linkProduto" type="text" placeholder="Cole o link aqui..." class="flex-1 p-3 border rounded-xl text-sm" />
-              <button type="button" onclick="window.analisarLinkRender()" class="bg-blue-600 text-white px-4 rounded-xl font-bold shadow-sm hover:bg-blue-700"><i class="fa-solid fa-m
-                                                         <i class="fa-solid fa-magnifying-glass"></i></button>
+              <input id="linkProduto" type="url" placeholder="Cole o link..." class="flex-1 p-3 bg-white border border-slate-200 rounded-xl text-sm shadow-sm" />
+              <button type="button" onclick="window.analisarLinkRender()" class="bg-blue-600 text-white px-4 rounded-xl font-bold shadow-sm hover:bg-blue-700"><i class="fa-solid fa-magnifying-glass"></i></button>
             </div>
           </div>
           <div id="resultadoScan" class="hidden mt-4"></div>
@@ -704,7 +779,11 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
         <div id="aba-relatorio" class="aba-conteudo hidden space-y-4">
           <h3 class="font-bold text-sm text-slate-700">📊 Suas Métricas Ambientais</h3>
           <div id="relatorioLista"></div>
-          <button type="button" onclick="window.imprimirSessaoAtualAmbiental()" class="w-full bg-slate-800 text-white py-3 rounded-xl text-xs font-bold shadow-sm">Imprimir PDF Sessão Atual</button>
+          <button type="button" onclick="window.imprimirSessaoAtualAmbiental()" class="pdf-btn-sessao">Imprimir PDF Sessão</button>
+          <div class="flex justify-between">
+              <button onclick="window.imprimirExtrato15Dias()" class="pdf-btn-15dias">PDF 15 Dias</button>
+              <button onclick="window.imprimirExtrato30Dias()" class="pdf-btn-30dias">PDF 30 Dias</button>
+          </div>
         </div>
 
         <div id="aba-avaliar" class="aba-conteudo hidden dark-bg">
@@ -728,6 +807,9 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
             <button type="button" onclick="window.enviarMensagem()" class="bg-green-600 text-white px-4 rounded-xl"><i class="fa-solid fa-paper-plane"></i></button>
           </div>
         </div>
-
-      </div> </div> </div> </div> </body>
-</html>                                                                                                        
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
