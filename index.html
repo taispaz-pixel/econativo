@@ -40,7 +40,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// ✅ CORREÇÃO PRINCIPAL: Deixa auth e funções acessíveis globalmente
+// Deixa auth e funções acessíveis globalmente
 window.auth = auth;
 window.signInWithEmailAndPassword = signInWithEmailAndPassword;
 window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
@@ -75,11 +75,14 @@ const dadosReciclagem = {
 let historicoResiduos = { comida: 0, papelao: 0, plastico: 0, vidro: 0, aluminio: 0, pilha: 0 };
 const somMoeda = new Audio("https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3");
 
-let tokenNyckelSalvo = null;
-let tempoToken = 0;
+// VARIÁVEIS DE MAPA
 let mapa = null;
 let usuarioLat = null;
 let usuarioLng = null;
+
+// VARIÁVEIS DO CACHE DA IA
+let tokenNyckelSalvo = null;
+let tempoToken = 0;
 
 function atualizarNivel() {
   const elXP = document.getElementById("xpUsuario");
@@ -214,155 +217,73 @@ async function buscarAvaliacoes(dias = 0) {
   if(!u) return [];
   const dataLimite = new Date();
   dataLimite.setDate(dataLimite.getDate() - dias);
-  
-  const q = query(
-    collection(db, "avaliacoes_app"),
-    where("usuario", "==", u.email),
-    where("data", ">=", dataLimite)
-  );
-  
+  const q = query(collection(db, "avaliacoes_app"), where("usuario", "==", u.email), where("data", ">=", dataLimite));
   const querySnapshot = await getDocs(q);
   const avaliacoes = [];
-  querySnapshot.forEach((doc) => {
-    avaliacoes.push({id: doc.id, ...doc.data()});
-  });
+  querySnapshot.forEach((doc) => { avaliacoes.push({id: doc.id, ...doc.data()}); });
   return avaliacoes;
 }
 
-window.imprimirAvaliacaoHoje = async () => {
-  const avaliacoes = await buscarAvaliacoes(0);
-  gerarPDFAvaliacoes(avaliacoes, "Avaliações - Hoje");
-};
-
-window.imprimirAvaliacao15Dias = async () => {
-  const avaliacoes = await buscarAvaliacoes(15);
-  gerarPDFAvaliacoes(avaliacoes, "Avaliações - Últimos 15 Dias");
-};
-
-window.imprimirAvaliacao30Dias = async () => {
-  const avaliacoes = await buscarAvaliacoes(30);
-  gerarPDFAvaliacoes(avaliacoes, "Avaliações - Últimos 30 Dias");
-};
+window.imprimirAvaliacaoHoje = async () => { const avaliacoes = await buscarAvaliacoes(0); gerarPDFAvaliacoes(avaliacoes, "Avaliações - Hoje"); };
+window.imprimirAvaliacao15Dias = async () => { const avaliacoes = await buscarAvaliacoes(15); gerarPDFAvaliacoes(avaliacoes, "Avaliações - Últimos 15 Dias"); };
+window.imprimirAvaliacao30Dias = async () => { const avaliacoes = await buscarAvaliacoes(30); gerarPDFAvaliacoes(avaliacoes, "Avaliações - Últimos 30 Dias"); };
 
 function gerarPDFAvaliacoes(avaliacoes, titulo) {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  
+  const { jsPDF } = window.jspdf; const doc = new jsPDF();
   const usuarioEmail = auth.currentUser? auth.currentUser.email : "Visitante";
   const dataHoje = new Date().toLocaleDateString('pt-BR');
-  
-  doc.setFillColor(126, 34, 206);
-  doc.rect(0, 0, 220, 40, 'F');
-  
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("Helvetica", "bold");
-  doc.setFontSize(24);
-  doc.text("EcoNativo", 15, 20);
-  doc.setFontSize(10);
-  doc.setFont("Helvetica", "normal");
+  doc.setFillColor(126, 34, 206); doc.rect(0, 0, 220, 40, 'F');
+  doc.setTextColor(255, 255, 255); doc.setFont("Helvetica", "bold"); doc.setFontSize(24);
+  doc.text("EcoNativo", 15, 20); doc.setFontSize(10); doc.setFont("Helvetica", "normal");
   doc.text(titulo.toUpperCase(), 15, 30);
-  
-  doc.setTextColor(51, 65, 85);
-  doc.setFontSize(11);
-  doc.text(`Usuário: ${usuarioEmail}`, 15, 52);
-  doc.text(`Emitido em: ${dataHoje}`, 15, 58);
-
+  doc.setTextColor(51, 65, 85); doc.setFontSize(11);
+  doc.text(`Usuário: ${usuarioEmail}`, 15, 52); doc.text(`Emitido em: ${dataHoje}`, 15, 58);
   const linhas = [];
-  if(avaliacoes.length === 0) {
-    linhas.push(["-", "-", "-", "-"]);
-  } else {
+  if(avaliacoes.length === 0) { linhas.push(["-", "-", "-", "-"]); } else {
     avaliacoes.forEach(av => {
       const data = av.data?.toDate ? av.data.toDate().toLocaleDateString('pt-BR') : "Sem data";
       linhas.push([data, av.nota || "", av.categoria || "", av.subcategoria || ""]);
     });
   }
-
-  doc.autoTable({
-    startY: 65, 
-    head: [['Data', 'Nota', 'Categoria', 'Detalhe']], 
-    body: linhas,
-    headStyles: { fillColor: [126, 34, 206] }, 
-    theme: 'grid',
-    styles: { fontSize: 9 }
-  });
-
+  doc.autoTable({ startY: 65, head: [['Data', 'Nota', 'Categoria', 'Detalhe']], body: linhas, headStyles: { fillColor: [126, 34, 206] }, theme: 'grid', styles: { fontSize: 9 } });
   doc.setFontSize(9); doc.setFont("Helvetica", "italic");
   doc.text("Obrigado por nos ajudar a melhorar! 💜", 105, doc.internal.pageSize.height - 15, { align: "center" });
   window.open(doc.output('bloburl'), '_blank');
 }
 
 window.imprimirSessaoAtualAmbiental = () => {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  
+  const { jsPDF } = window.jspdf; const doc = new jsPDF();
   const usuarioEmail = auth.currentUser? auth.currentUser.email : "Visitante";
   const dataHoje = new Date().toLocaleDateString('pt-BR');
-  
-  doc.setFillColor(22, 163, 74);
-  doc.rect(0, 0, 220, 40, 'F');
-  
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("Helvetica", "bold");
-  doc.setFontSize(24);
-  doc.text("EcoNativo", 15, 20);
-  doc.setFontSize(10);
-  doc.setFont("Helvetica", "normal");
+  doc.setFillColor(22, 163, 74); doc.rect(0, 0, 220, 40, 'F');
+  doc.setTextColor(255, 255, 255); doc.setFont("Helvetica", "bold"); doc.setFontSize(24);
+  doc.text("EcoNativo", 15, 20); doc.setFontSize(10); doc.setFont("Helvetica", "normal");
   doc.text("EXTRATO - SESSÃO ATUAL", 15, 30);
-  
-  doc.setTextColor(51, 65, 85);
-  doc.setFontSize(11);
-  doc.text(`Usuário: ${usuarioEmail}`, 15, 52);
-  doc.text(`Data: ${dataHoje}`, 15, 58);
-  
-  let totalPontos = 0; let totalKg = 0; let totalImpacto = 0;
+  doc.setTextColor(51, 65, 85); doc.setFontSize(11);
+  doc.text(`Usuário: ${usuarioEmail}`, 15, 52); doc.text(`Data: ${dataHoje}`, 15, 58);
   let rows = [];
-
   for (const [chave, qtd] of Object.entries(historicoResiduos)) {
     if (qtd > 0) {
-      let pts = qtd * dadosReciclagem[chave].pontos;
-      let kg = qtd * dadosReciclagem[chave].pesoKg;
-      let imp = qtd * dadosReciclagem[chave].pesoImpacto;
-      totalPontos += pts; totalKg += kg; totalImpacto += imp;
+      let pts = qtd * dadosReciclagem[chave].pontos; let kg = qtd * dadosReciclagem[chave].pesoKg; let imp = qtd * dadosReciclagem[chave].pesoImpacto;
       rows.push([dadosReciclagem[chave].nome, `${qtd} un`, `${kg.toFixed(3)} kg`, `+${pts} pts`, dadosReciclagem[chave].tipo]);
     }
   }
-  
   if(rows.length === 0) rows.push(["Nenhum dado registrado", "-", "-", "-", "-"]);
-
-  doc.autoTable({
-    startY: 65, head: [['Material', 'Qtd', 'Massa', 'Pontos', 'Destinação']], body: rows,
-    headStyles: { fillColor: [22, 163, 74] }, theme: 'striped'
-  });
-
-  doc.setFontSize(9); doc.setFont("Helvetica", "italic");
-  doc.text("EcoNativo © 2026", 105, doc.internal.pageSize.height - 15, { align: "center" });
+  doc.autoTable({ startY: 65, head: [['Material', 'Qtd', 'Massa', 'Pontos', 'Destinação']], body: rows, headStyles: { fillColor: [22, 163, 74] }, theme: 'striped' });
+  doc.setFontSize(9); doc.setFont("Helvetica", "italic"); doc.text("EcoNativo © 2026", 105, doc.internal.pageSize.height - 15, { align: "center" });
   window.open(doc.output('bloburl'), '_blank');
 };
 
 window.imprimirExtrato15Dias = () => {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  
+  const { jsPDF } = window.jspdf; const doc = new jsPDF();
   const usuarioEmail = auth.currentUser? auth.currentUser.email : "Visitante";
   const dataHoje = new Date().toLocaleDateString('pt-BR');
-  
-  doc.setFillColor(16, 185, 129);
-  doc.rect(0, 0, 220, 40, 'F');
-  
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("Helvetica", "bold");
-  doc.setFontSize(24);
-  doc.text("EcoNativo", 15, 20);
-  doc.setFontSize(10);
-  doc.setFont("Helvetica", "normal");
+  doc.setFillColor(16, 185, 129); doc.rect(0, 0, 220, 40, 'F');
+  doc.setTextColor(255, 255, 255); doc.setFont("Helvetica", "bold"); doc.setFontSize(24);
+  doc.text("EcoNativo", 15, 20); doc.setFontSize(10); doc.setFont("Helvetica", "normal");
   doc.text("EXTRATO CONSOLIDADO - 15 DIAS", 15, 30);
-  
-  doc.setTextColor(51, 65, 85);
-  doc.setFontSize(11);
-  doc.text(`Usuário: ${usuarioEmail}`, 15, 52);
-  doc.text(`Período: Últimos 15 Dias`, 15, 58);
-  doc.text(`Emitido em: ${dataHoje}`, 15, 64);
-
+  doc.setTextColor(51, 65, 85); doc.setFontSize(11);
+  doc.text(`Usuário: ${usuarioEmail}`, 15, 52); doc.text(`Período: Últimos 15 Dias`, 15, 58); doc.text(`Emitido em: ${dataHoje}`, 15, 64);
   let linesData = [
     ["Resíduo Orgânico 🌱", "12 un", "3,00 kg", "+60 pts", "Lixeira Marrom 🟤"],
     ["Papelão / Papel ♻️", "8 un", "1,60 kg", "+80 pts", "Lixeira Azul 🔵"],
@@ -370,41 +291,21 @@ window.imprimirExtrato15Dias = () => {
     ["Vidro ♻️", "4 un", "1,20 kg", "+80 pts", "Lixeira Verde 🟢"],
     ["Alumínio / Metal ♻️", "20 un", "0,30 kg", "+600 pts", "Lixeira Amarela 🟡"]
   ];
-
-  doc.autoTable({
-    startY: 72, head: [['Material', 'Qtd', 'Massa Total', 'EcoPoints', 'Destinação']], body: linesData,
-    headStyles: { fillColor: [16, 185, 129] }, theme: 'grid'
-  });
-
-  doc.setFontSize(9); doc.setFont("Helvetica", "italic");
-  doc.text("Evolução sustentável: +15% de redução de impacto! 🌱", 105, doc.internal.pageSize.height - 15, { align: "center" });
+  doc.autoTable({ startY: 72, head: [['Material', 'Qtd', 'Massa Total', 'EcoPoints', 'Destinação']], body: linesData, headStyles: { fillColor: [16, 185, 129] }, theme: 'grid' });
+  doc.setFontSize(9); doc.setFont("Helvetica", "italic"); doc.text("Evolução sustentável: +15% de redução de impacto! 🌱", 105, doc.internal.pageSize.height - 15, { align: "center" });
   window.open(doc.output('bloburl'), '_blank');
 };
 
 window.imprimirExtrato30Dias = () => {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  
+  const { jsPDF } = window.jspdf; const doc = new jsPDF();
   const usuarioEmail = auth.currentUser? auth.currentUser.email : "Visitante";
   const dataHoje = new Date().toLocaleDateString('pt-BR');
-  
-  doc.setFillColor(16, 185, 129);
-  doc.rect(0, 0, 220, 40, 'F');
-  
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("Helvetica", "bold");
-  doc.setFontSize(24);
-  doc.text("EcoNativo", 15, 20);
-  doc.setFontSize(10);
-  doc.setFont("Helvetica", "normal");
+  doc.setFillColor(16, 185, 129); doc.rect(0, 0, 220, 40, 'F');
+  doc.setTextColor(255, 255, 255); doc.setFont("Helvetica", "bold"); doc.setFontSize(24);
+  doc.text("EcoNativo", 15, 20); doc.setFontSize(10); doc.setFont("Helvetica", "normal");
   doc.text("EXTRATO CONSOLIDADO - 30 DIAS", 15, 30);
-  
-  doc.setTextColor(51, 65, 85);
-  doc.setFontSize(11);
-  doc.text(`Usuário: ${usuarioEmail}`, 15, 52);
-  doc.text(`Período: Últimos 30 Dias`, 15, 58);
-  doc.text(`Emitido em: ${dataHoje}`, 15, 64);
-
+  doc.setTextColor(51, 65, 85); doc.setFontSize(11);
+  doc.text(`Usuário: ${usuarioEmail}`, 15, 52); doc.text(`Período: Últimos 30 Dias`, 15, 58); doc.text(`Emitido em: ${dataHoje}`, 15, 64);
   let linesData = [
     ["Resíduo Orgânico 🌱", "30 un", "7,50 kg", "+150 pts", "Lixeira Marrom 🟤"],
     ["Papelão / Papel ♻️", "22 un", "4,40 kg", "+220 pts", "Lixeira Azul 🔵"],
@@ -413,78 +314,10 @@ window.imprimirExtrato30Dias = () => {
     ["Alumínio / Metal ♻️", "60 un", "0,90 kg", "+1800 pts", "Lixeira Amarela 🟡"],
     ["Pilhas / Baterias ⚠️", "2 un", "0,05 kg", "+100 pts", "Lixeira Laranja 🟠"]
   ];
-
-  doc.autoTable({
-    startY: 72, head: [['Material', 'Qtd', 'Massa Total', 'EcoPoints', 'Destinação']], body: linesData,
-    headStyles: { fillColor: [16, 185, 129] }, theme: 'grid'
-  });
-
-  doc.setFontSize(9); doc.setFont("Helvetica", "italic");
-  doc.text("Parabéns! Você reduziu 32% do impacto ambiental este mês 🌍", 105, doc.internal.pageSize.height - 15, { align: "center" });
+  doc.autoTable({ startY: 72, head: [['Material', 'Qtd', 'Massa Total', 'EcoPoints', 'Destinação']], body: linesData, headStyles: { fillColor: [16, 185, 129] }, theme: 'grid' });
+  doc.setFontSize(9); doc.setFont("Helvetica", "italic"); doc.text("Parabéns! Você reduziu 32% do impacto ambiental este mês 🌍", 105, doc.internal.pageSize.height - 15, { align: "center" });
   window.open(doc.output('bloburl'), '_blank');
 };
-
-document.getElementById("btnEntrar")?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  const elEmail = document.getElementById("email");
-  const elSenha = document.getElementById("senha");
-  if(!elEmail || !elSenha) return;
-  const email = elEmail.value.trim();
-  const senha = elSenha.value;
-
-  if(!email ||!senha) { alert("Preencha e-mail e senha!"); return; }
-  try {
-    const btn = document.getElementById("btnEntrar");
-    if(btn) btn.innerText = "Acessando...";
-    await signInWithEmailAndPassword(auth, email, senha);
-    if(btn) btn.innerText = "Entrar";
-  } catch(err) {
-    const btn = document.getElementById("btnEntrar");
-    if(btn) btn.innerText = "Entrar";
-    alert("ERRO AO ENTRAR:\n" + err.message);
-  }
-});
-
-document.getElementById("btnCriarConta")?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  const elEmail = document.getElementById("email");
-  const elSenha = document.getElementById("senha");
-  const elNome = document.getElementById("nomeCompleto");
-  const elWhatsapp = document.getElementById("whatsapp");
-  const elNascimento = document.getElementById("dataNascimento");
-  if(!elEmail || !elSenha || !elNome || !elWhatsapp || !elNascimento) return;
-
-  const email = elEmail.value.trim();
-  const senha = elSenha.value;
-  const nome = elNome.value.trim();
-  const whatsapp = elWhatsapp.value.trim();
-  const dataNascimento = elNascimento.value;
-
-  if(!nome ||!whatsapp ||!dataNascimento ||!email ||!senha) { alert("Preencha todos os campos!"); return; }
-  if(senha.length < 6) { alert("Senha precisa ter pelo menos 6 dígitos!"); return; }
-
-  try {
-    const btn = document.getElementById("btnCriarConta");
-    if(btn) btn.innerText = "Criando...";
-    const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
-    const u = userCredential.user;
-    
-    await setDoc(doc(db, "usuarios", u.uid), {
-      nomeCompleto: nome,
-      whatsapp: whatsapp,
-      dataNascimento: dataNascimento,
-      email: email,
-      dataCadastro: serverTimestamp()
-    });
-
-    if(btn) btn.innerText = "Criar Conta";
-    alert("Conta criada com sucesso! Bem-vindo(a), " + nome + "!");
-  } catch(err) {
-    const btn = document.getElementById("btnCriarConta");
-    if(btn) btn.innerText = "Criar Conta";
-    alert("ERRO AO CRIAR CONTA:\n" + err.message);
-  }
-});
 
 window.mudarAba = (nome) => {
   document.querySelectorAll(".aba-conteudo").forEach(el => el.classList.add("hidden"));
@@ -500,7 +333,9 @@ window.mudarAba = (nome) => {
     botaoAtivo.classList.add("bg-green-600", "text-white", "font-bold");
   }
 
+  if(nome === "scan") window.abrirCamera(); else window.pararCamera();
   if(nome === "mapa" && !mapa) inicializarMapa();
+  if(nome === "relatorio") atualizarRelatorioGrafico();
 };
 
 window.logout = async () => { await signOut(auth); };
@@ -515,10 +350,12 @@ onAuthStateChanged(auth, (u) => {
     loginBox.classList.add("hidden");
     appContainer.classList.remove("hidden");
     usuarioEl.innerText = u.email;
+    carregarMensagens();
     atualizarNivel();
   } else {
     loginBox.classList.remove("hidden");
     appContainer.classList.add("hidden");
+    if(window.pararCamera) window.pararCamera();
   }
 });
 
@@ -555,52 +392,31 @@ function carregarMensagens() {
 function inicializarMapa() {
   const container = document.getElementById("mapa-container");
   if(!container) return;
-
   mapa = L.map('mapa-container').setView([-15.78, -47.92], 5);
-
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    attribution: '&copy; OpenStreetMap contributors'
   }).addTo(mapa);
 
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        usuarioLat = pos.coords.latitude;
-        usuarioLng = pos.coords.longitude;
-        
+        usuarioLat = pos.coords.latitude; usuarioLng = pos.coords.longitude;
         mapa.setView([usuarioLat, usuarioLng], 14);
-
-        L.marker([usuarioLat, usuarioLng], {icon: L.icon({
-          iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-          iconSize: [32,32]
-        })}).addTo(mapa).bindPopup("Você está aqui! 📍").openPopup();
-
+        L.marker([usuarioLat, usuarioLng], {icon: L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png', iconSize: [32,32] })}).addTo(mapa).bindPopup("Você está aqui! 📍").openPopup();
         const pontos = [
-          {lat: usuarioLat + 0.012, lng: usuarioLng - 0.008, nome: "Ponto Coleta Recicláveis", tipo: "Plástico / Papel / Vidro"},
-          {lat: usuarioLat - 0.009, lng: usuarioLng + 0.015, nome: "Estação Descarte Correto", tipo: "Pilhas / Eletrônicos"},
-          {lat: usuarioLat + 0.005, lng: usuarioLng + 0.007, nome: "Compostagem Comunitária", tipo: "Orgânicos / Restos Alimentares"}
+          {lat: usuarioLat + 0.012, lng: usuarioLng - 0.008, nome: "Ponto Coleta", tipo: "Plástico / Vidro"},
+          {lat: usuarioLat - 0.009, lng: usuarioLng + 0.015, nome: "Ecoponto", tipo: "Pilhas"}
         ];
-
         pontos.forEach(pt => {
-          L.marker([pt.lat, pt.lng], {icon: L.icon({
-            iconUrl: 'https://cdn-icons-png.flaticon.com/512/149/149062.png',
-            iconSize: [28,28]
-          })}).addTo(mapa).bindPopup(`<b>${pt.nome}</b><br>${pt.tipo}`);
+          L.marker([pt.lat, pt.lng], {icon: L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/149/149062.png', iconSize: [28,28] })}).addTo(mapa).bindPopup(`<b>${pt.nome}</b><br>${pt.tipo}`);
         });
-
-      },
-      (erro) => {
-        alert("Não foi possível acessar sua localização: " + erro.message);
-      }
+      }, (erro) => { alert("Sem localização: " + erro.message); }
     );
-  } else {
-    alert("Geolocalização não suportada no seu navegador");
   }
 }
 
 window.onload = function() {
     atualizarNivel();
-    carregarMensagens();
     if (sessionStorage.getItem('bannerFechado') === 'true') {
         const banner = document.getElementById('banner-beta');
         if(banner) banner.style.display = 'none';
@@ -620,8 +436,12 @@ window.abrirCamera = async () => {
   if(!video || !placeholder) return;
   try {
     streamAtual = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-    video.srcObject = streamAtual; video.classList.remove("hidden"); placeholder.classList.add("hidden");
-  } catch (err) { alert("Permita o uso da câmera!"); }
+    video.srcObject = streamAtual; 
+    video.classList.remove("hidden"); 
+    placeholder.classList.add("hidden");
+  } catch (err) { 
+    alert("Para analisar resíduos, você precisa permitir o uso da câmera."); 
+  }
 };
 
 window.pararCamera = () => {
@@ -629,17 +449,15 @@ window.pararCamera = () => {
     streamAtual.getTracks().forEach(t => t.stop());
     const video = document.getElementById("cameraFeed");
     const placeholder = document.getElementById("cameraPlaceholder");
-    if(video) video.classList.add("hidden");
+    if(video) { video.srcObject = null; video.classList.add("hidden"); }
     if(placeholder) placeholder.classList.remove("hidden");
     streamAtual = null;
   }
 };
 
 // ==========================================
-// 🚀 INÍCIO DO CÓDIGO DA IA (CÂMERA E SCAN) 🚀
+// 🚀 IA: CACHE E PROTEÇÃO CONTRA TELA PRETA 
 // ==========================================
-
-// --- FUNÇÃO DA IA OTIMIZADA COM CACHE E TRATAMENTO DE ERROS REAIS ---
 async function getNyckelToken() {
   if (tokenNyckelSalvo && (Date.now() - tempoToken < 3000000)) return tokenNyckelSalvo;
   try {
@@ -647,13 +465,11 @@ async function getNyckelToken() {
       method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `grant_type=client_credentials&client_id=${NYCKEL_CLIENT_ID}&client_secret=${NYCKEL_CLIENT_SECRET}`
     });
-    if (!response.ok) throw new Error("Chave da IA inválida ou limite atingido.");
+    if (!response.ok) throw new Error("Falha na autenticação da IA.");
     const data = await response.json();
     tokenNyckelSalvo = data.access_token; tempoToken = Date.now();
     return tokenNyckelSalvo;
-  } catch (erro) {
-    throw new Error("Falha na autorização do Nyckel: " + erro.message);
-  }
+  } catch (erro) { throw new Error(erro.message); }
 }
 
 window.scanearObjeto = async () => {
@@ -661,39 +477,35 @@ window.scanearObjeto = async () => {
   const video = document.getElementById("cameraFeed");
   if(!resultado || !video) return;
 
-  // 1. TRAVA DE SEGURANÇA: Verifica se a câmera foi ligada antes de analisar
-  if (video.videoWidth === 0 || video.classList.contains("hidden")) {
-    alert("⚠️ Por favor, ligue a câmera e aponte para um objeto antes de analisar!");
+  if (!video.srcObject || video.videoWidth === 0 || video.classList.contains("hidden")) {
+    alert("⚠️ Opa! Você precisa ligar a câmera primeiro e apontar para um objeto.");
     return;
   }
 
   resultado.classList.remove("hidden");
-  resultado.innerHTML = `<div class="text-center py-6"><i class="fa-solid fa-bolt text-4xl text-green-500 mb-3 animate-bounce"></i><p class="font-semibold text-slate-700 text-xs">Analisando na nuvem...</p></div>`;
+  resultado.innerHTML = `<div class="text-center py-6"><i class="fa-solid fa-bolt text-4xl text-green-500 mb-3 animate-bounce"></i><p class="font-semibold text-slate-700 text-xs">Analisando inteligência na nuvem...</p></div>`;
   
   try {
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth; canvas.height = video.videoHeight;
     canvas.getContext("2d").drawImage(video, 0, 0);
-    
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
-    if (!blob) throw new Error("Não foi possível capturar a imagem da câmera.");
+    if(!blob) throw new Error("Falha ao capturar o frame da câmera.");
 
     const token = await getNyckelToken();
-    
-    const formData = new FormData(); 
-    formData.append('data', blob, 'image.jpg');
+    const formData = new FormData(); formData.append('data', blob, 'image.jpg');
     
     const resposta = await fetch(`https://www.nyckel.com/v1/functions/${NYCKEL_FUNCTION_ID}/invoke`, {
       method: "POST", headers: { 'Authorization': `Bearer ${token}` }, body: formData
     });
     
-    if (!resposta.ok) {
-      const erroTxt = await resposta.text();
-      throw new Error(`Erro da IA (${resposta.status}): ${erroTxt}`);
+    if(!resposta.ok) {
+        let msg = await resposta.text();
+        throw new Error(`Servidor rejeitou a requisição. Limite atingido? Detalhe: ${msg}`);
     }
-
+    
     const dadosNyckel = await resposta.json();
-    if (!dadosNyckel || !dadosNyckel.labelName) throw new Error("A IA não conseguiu identificar o objeto.");
+    if (!dadosNyckel ||!dadosNyckel.labelName) throw new Error("O objeto não foi reconhecido.");
     
     let classeLida = dadosNyckel.labelName.toLowerCase().trim();
     let maiorClasse = classeLida;
@@ -706,7 +518,7 @@ window.scanearObjeto = async () => {
     else if(classeLida.includes("pilha") || classeLida.includes("bateria")) maiorClasse = "pilha";
 
     if (maiorClasse === "fundo" || maiorClasse === "nada") {
-      resultado.innerHTML = `<div class="p-4 rounded-xl bg-amber-50 text-amber-900 text-xs font-semibold text-center mt-3">⚠️ Nenhum objeto detectado. Aproxime mais!</div>`; return;
+      resultado.innerHTML = `<div class="p-4 rounded-xl bg-amber-50 text-amber-900 text-xs font-semibold text-center mt-3">⚠️ Nenhum objeto claro detectado. Centralize o resíduo e tente novamente.</div>`; return;
     }
     
     const dadosObjeto = dadosReciclagem[maiorClasse];
@@ -717,10 +529,10 @@ window.scanearObjeto = async () => {
       historicoResiduos[maiorClasse]++;
       atualizarNivel();
 
-      let estiloBorda = maiorClasse === "pilha" ? "border-orange-500" : "border-green-500";
-      let icone = maiorClasse === "pilha" ? "⚠️" : "♻️";
-      let corBotaoMapa = maiorClasse === "pilha" ? "bg-orange-600" : "bg-emerald-600";
-      let botaoMapa = dadosObjeto.buscaMapa ? `<button type="button" onclick="window.mudarAba('mapa')" class="w-full ${corBotaoMapa} text-white py-3 rounded-xl text-xs font-bold shadow-sm transition mt-2"><i class="fa-solid fa-map-location-dot"></i> Encontrar Pontos de Coleta</button>` : "";
+      let estiloBorda = maiorClasse === "pilha"? "border-orange-500" : "border-green-500";
+      let icone = maiorClasse === "pilha"? "⚠️" : "♻️";
+      let corBotaoMapa = maiorClasse === "pilha"? "bg-orange-600" : "bg-emerald-600";
+      let botaoMapa = dadosObjeto.buscaMapa? `<button type="button" onclick="window.mudarAba('mapa')" class="w-full ${corBotaoMapa} text-white py-3 rounded-xl text-xs font-bold shadow-sm transition mt-2"><i class="fa-solid fa-map-location-dot"></i> Encontrar Pontos de Coleta</button>` : "";
 
       resultado.innerHTML = `
         <div class="space-y-3 mt-3 animate-fade-in no-print">
@@ -732,9 +544,8 @@ window.scanearObjeto = async () => {
         </div>`;
     }
   } catch (e) { 
-    // MOSTRA O ERRO REAL NA TELA
-    alert("Ocorreu um problema detalhado:\n" + e.message); 
-    resultado.innerHTML = `<div class="p-4 rounded-xl bg-red-50 text-red-900 text-xs font-semibold text-center mt-3">❌ Falha: ${e.message}</div>`;
+    console.error("ERRO SCAN:", e);
+    resultado.innerHTML = `<div class="p-4 rounded-xl bg-red-50 text-red-900 text-xs font-semibold text-center mt-3">❌ Erro de processamento:<br>${e.message}</div>`; 
   }
 };
 
@@ -759,10 +570,9 @@ window.analisarLinkRender = async () => {
           <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">${data.analise}</p>
         </div>`;
     } else { alert("Erro: " + data.erro); }
-  } catch (e) { alert("Falha na comunicação!"); }
+  } catch (e) { alert("Falha na comunicação com Render!"); }
 };
 </script>
-
 <style>
 * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
 body{ margin:0; padding:0; font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); min-height: 100vh; padding-top: 40px; }
@@ -830,6 +640,7 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
         padding: 0 5px;
         line-height: 1;">×</button>
 </div>
+
 <div id="mainWrapper" class="p-4">
   <div class="w-full max-w-lg mx-auto">
     <div class="card">
@@ -900,14 +711,19 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
         <div id="aba-scan" class="aba-conteudo hidden space-y-4">
           <h3 class="font-bold text-sm text-slate-700">📷 Escanear Resíduo</h3>
           <div class="scan-frame rounded-xl overflow-hidden relative">
-            <div id="cameraFeed" class="w-full h-full bg-slate-800 flex items-center justify-center text-white">
-              Câmera ativada
+            <video id="cameraFeed" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
+            <div id="cameraPlaceholder" class="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center text-white">
+              <i class="fa-solid fa-camera text-4xl opacity-20 mb-2"></i>
+              <p class="text-xs opacity-40">Câmera aguardando ativação</p>
             </div>
             <div class="scan-line"></div>
           </div>
-          <button class="w-full bg-green-600 text-white py-3 rounded-xl font-bold">Capturar e Analisar</button>
+          <div class="grid grid-cols-2 gap-2 mb-4">
+            <button type="button" onclick="abrirCamera()" class="bg-green-600 text-white py-3 rounded-xl text-sm font-bold">📷 Ligar</button>
+            <button type="button" onclick="scanearObjeto()" class="bg-amber-500 text-white py-3 rounded-xl text-sm font-bold">🔍 Analisar Foto</button>
+          </div>
 
-          <div class="mt-4">
+          <div class="pt-4 border-t border-slate-200">
             <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Ou analisar link</h4>
             <input id="linkProduto" type="text" placeholder="Cole o link do produto..." class="w-full p-3 border rounded-xl" />
             <button onclick="analisarLinkRender()" class="w-full bg-blue-600 text-white py-2 mt-2 rounded-xl">Analisar Link</button>
@@ -993,5 +809,10 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
           </div>
         </div>
 
-      </div> </div> </div> </body>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
 </html>
