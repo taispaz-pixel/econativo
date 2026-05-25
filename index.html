@@ -588,14 +588,18 @@ window.scanearObjeto = async () => {
     if (!dadosNyckel ||!dadosNyckel.labelName) throw new Error("O objeto não foi reconhecido.");
     
     let classeLida = dadosNyckel.labelName.toLowerCase().trim();
+    
+    // 👇 BLINDAGEM DE ACENTOS E CARACTERES ESPECIAIS
+    let classeSemAcento = classeLida.normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+    
     let maiorClasse = classeLida;
 
-    if(classeLida.includes("comida") || classeLida.includes("organico")) maiorClasse = "comida";
-    else if(classeLida.includes("papel")) maiorClasse = "papelao";
-    else if(classeLida.includes("plastico") || classeLida.includes("pet")) maiorClasse = "plastico";
-    else if(classeLida.includes("vidro")) maiorClasse = "vidro";
-    else if(classeLida.includes("aluminio") || classeLida.includes("metal") || classeLida.includes("lata")) maiorClasse = "aluminio";
-    else if(classeLida.includes("pilha") || classeLida.includes("bateria")) maiorClasse = "pilha";
+    if(classeSemAcento.includes("comida") || classeSemAcento.includes("organico")) maiorClasse = "comida";
+    else if(classeSemAcento.includes("papel")) maiorClasse = "papelao";
+    else if(classeSemAcento.includes("plastico") || classeSemAcento.includes("pet")) maiorClasse = "plastico";
+    else if(classeSemAcento.includes("vidro")) maiorClasse = "vidro";
+    else if(classeSemAcento.includes("aluminio") || classeSemAcento.includes("metal") || classeSemAcento.includes("lata")) maiorClasse = "aluminio";
+    else if(classeSemAcento.includes("pilha") || classeSemAcento.includes("bateria")) maiorClasse = "pilha";
 
     if (maiorClasse === "fundo" || maiorClasse === "nada") {
       resultado.innerHTML = `<div class="p-4 rounded-xl bg-amber-50 text-amber-900 text-xs font-semibold text-center mt-3">⚠️ Nenhum objeto claro detectado. Centralize o resíduo e tente novamente.</div>`; return;
