@@ -97,7 +97,6 @@ function atualizarNivel() {
   
   elTitulo.innerText = titulo;
   elTitulo.className = `mt-1 text-[10px] font-black uppercase tracking-wider ${cor}`;
-  atualizarRelatorioGrafico();
 }
 
 function atualizarRelatorioGrafico() {
@@ -251,6 +250,54 @@ function gerarPDFAvaliacoes(avaliacoes, titulo) {
   window.open(doc.output('bloburl'), '_blank');
 }
 
+// --- FUNÇÃO AUXILIAR PARA BUSCAR E CONSOLIDAR DADOS REAIS DO BANCO ---
+async function buscarHistoricoPeriodo(dias) {
+  const u = auth.currentUser;
+  if (!u) return [["Nenhum dado registrado no período", "-", "-", "-", "-"]];
+  try {
+    const q = query(collection(db, "historico_residuos"), where("usuario", "==", u.email));
+    const querySnapshot = await getDocs(q);
+    let contagem = { comida: 0, papelao: 0, plastico: 0, vidro: 0, aluminio: 0, pilha: 0 };
+    const agora = Date.now();
+    const limiteMilissegundos = dias * 24 * 60 * 60 * 1000;
+
+    querySnapshot.forEach((doc) => {
+      const item = doc.data();
+      if (dias > 0) {
+        const dataItem = item.data?.toDate ? item.data.toDate().getTime() : null;
+        if (dataItem && (agora - dataItem > limiteMilissegundos)) {
+          return;
+        }
+      }
+      if (contagem[item.material] !== undefined) {
+        contagem[item.material]++;
+      }
+    });
+
+    let linhas = [];
+    for (const [chave, qtd] of Object.entries(contagem)) {
+      if (qtd > 0) {
+        let pts = qtd * dadosReciclagem[chave].pontos;
+        let kg = qtd * dadosReciclagem[chave].pesoKg;
+        linhas.push([
+          dadosReciclagem[chave].nome,
+          `${qtd} un`,
+          `${kg.toFixed(3).replace('.', ',')} kg`,
+          `+${pts} pts`,
+          dadosReciclagem[chave].tipo
+        ]);
+      }
+    }
+    if (linhas.length === 0) {
+      linhas.push(["Nenhum dado registrado no período", "-", "-", "-", "-"]);
+    }
+    return linhas;
+  } catch (err) {
+    console.error("Erro ao buscar histórico:", err);
+    return [["Erro ao carregar dados do banco", "-", "-", "-", "-"]];
+  }
+}
+
 window.imprimirSessaoAtualAmbiental = () => {
   const { jsPDF } = window.jspdf; const doc = new jsPDF();
   const usuarioEmail = auth.currentUser? auth.currentUser.email : "Visitante";
@@ -258,14 +305,14 @@ window.imprimirSessaoAtualAmbiental = () => {
   doc.setFillColor(22, 163, 74); doc.rect(0, 0, 220, 40, 'F');
   doc.setTextColor(255, 255, 255); doc.setFont("Helvetica", "bold"); doc.setFontSize(24);
   doc.text("EcoNativo", 15, 20); doc.setFontSize(10); doc.setFont("Helvetica", "normal");
-  doc.text("EXTRATO - SESSÃO ATUAL", 15, 30);
+  doc.text("EXTRATO - HISTÓRICO GERAL", 15, 30);
   doc.setTextColor(51, 65, 85); doc.setFontSize(11);
   doc.text(`Usuário: ${usuarioEmail}`, 15, 52); doc.text(`Data: ${dataHoje}`, 15, 58);
   let rows = [];
   for (const [chave, qtd] of Object.entries(historicoResiduos)) {
     if (qtd > 0) {
-      let pts = qtd * dadosReciclagem[chave].pontos; let kg = qtd * dadosReciclagem[chave].pesoKg; let imp = qtd * dadosReciclagem[chave].pesoImpacto;
-      rows.push([dadosReciclagem[chave].nome, `${qtd} un`, `${kg.toFixed(3)} kg`, `+${pts} pts`, dadosReciclagem[chave].tipo]);
+      let pts = qtd * dadosReciclagem[chave].pontos; let kg = qtd * dadosReciclagem[chave].pesoKg; 
+      rows.push([dadosReciclagem[chave].nome, `${qtd} un`, `${kg.toFixed(3).replace('.', ',')} kg`, `+${pts} pts`, dadosReciclagem[chave].tipo]);
     }
   }
   if(rows.length === 0) rows.push(["Nenhum dado registrado", "-", "-", "-", "-"]);
@@ -274,7 +321,7 @@ window.imprimirSessaoAtualAmbiental = () => {
   window.open(doc.output('bloburl'), '_blank');
 };
 
-window.imprimirExtrato15Dias = () => {
+window.imprimirExtrato15Dias = async () => {
   const { jsPDF } = window.jspdf; const doc = new jsPDF();
   const usuarioEmail = auth.currentUser? auth.currentUser.email : "Visitante";
   const dataHoje = new Date().toLocaleDateString('pt-BR');
@@ -284,19 +331,15 @@ window.imprimirExtrato15Dias = () => {
   doc.text("EXTRATO CONSOLIDADO - 15 DIAS", 15, 30);
   doc.setTextColor(51, 65, 85); doc.setFontSize(11);
   doc.text(`Usuário: ${usuarioEmail}`, 15, 52); doc.text(`Período: Últimos 15 Dias`, 15, 58); doc.text(`Emitido em: ${dataHoje}`, 15, 64);
-  let linesData = [
-    ["Resíduo Orgânico 🌱", "12 un", "3,00 kg", "+60 pts", "Lixeira Marrom 🟤"],
-    ["Papelão / Papel ♻️", "8 un", "1,60 kg", "+80 pts", "Lixeira Azul 🔵"],
-    ["Plástico / Pet ♻️", "15 un", "0,75 kg", "+225 pts", "Lixeira Vermelha 🔴"],
-    ["Vidro ♻️", "4 un", "1,20 kg", "+80 pts", "Lixeira Verde 🟢"],
-    ["Alumínio / Metal ♻️", "20 un", "0,30 kg", "+600 pts", "Lixeira Amarela 🟡"]
-  ];
+  
+  let linesData = await buscarHistoricoPeriodo(15);
+  
   doc.autoTable({ startY: 72, head: [['Material', 'Qtd', 'Massa Total', 'EcoPoints', 'Destinação']], body: linesData, headStyles: { fillColor: [16, 185, 129] }, theme: 'grid' });
-  doc.setFontSize(9); doc.setFont("Helvetica", "italic"); doc.text("Evolução sustentável: +15% de redução de impacto! 🌱", 105, doc.internal.pageSize.height - 15, { align: "center" });
+  doc.setFontSize(9); doc.setFont("Helvetica", "italic"); doc.text("Evolução sustentável: redução de impacto calculada! 🌱", 105, doc.internal.pageSize.height - 15, { align: "center" });
   window.open(doc.output('bloburl'), '_blank');
 };
 
-window.imprimirExtrato30Dias = () => {
+window.imprimirExtrato30Dias = async () => {
   const { jsPDF } = window.jspdf; const doc = new jsPDF();
   const usuarioEmail = auth.currentUser? auth.currentUser.email : "Visitante";
   const dataHoje = new Date().toLocaleDateString('pt-BR');
@@ -306,16 +349,11 @@ window.imprimirExtrato30Dias = () => {
   doc.text("EXTRATO CONSOLIDADO - 30 DIAS", 15, 30);
   doc.setTextColor(51, 65, 85); doc.setFontSize(11);
   doc.text(`Usuário: ${usuarioEmail}`, 15, 52); doc.text(`Período: Últimos 30 Dias`, 15, 58); doc.text(`Emitido em: ${dataHoje}`, 15, 64);
-  let linesData = [
-    ["Resíduo Orgânico 🌱", "30 un", "7,50 kg", "+150 pts", "Lixeira Marrom 🟤"],
-    ["Papelão / Papel ♻️", "22 un", "4,40 kg", "+220 pts", "Lixeira Azul 🔵"],
-    ["Plástico / Pet ♻️", "45 un", "2,25 kg", "+675 pts", "Lixeira Vermelha 🔴"],
-    ["Vidro ♻️", "12 un", "3,60 kg", "+240 pts", "Lixeira Verde 🟢"],
-    ["Alumínio / Metal ♻️", "60 un", "0,90 kg", "+1800 pts", "Lixeira Amarela 🟡"],
-    ["Pilhas / Baterias ⚠️", "2 un", "0,05 kg", "+100 pts", "Lixeira Laranja 🟠"]
-  ];
+  
+  let linesData = await buscarHistoricoPeriodo(30);
+  
   doc.autoTable({ startY: 72, head: [['Material', 'Qtd', 'Massa Total', 'EcoPoints', 'Destinação']], body: linesData, headStyles: { fillColor: [16, 185, 129] }, theme: 'grid' });
-  doc.setFontSize(9); doc.setFont("Helvetica", "italic"); doc.text("Parabéns! Você reduziu 32% do impacto ambiental este mês 🌍", 105, doc.internal.pageSize.height - 15, { align: "center" });
+  doc.setFontSize(9); doc.setFont("Helvetica", "italic"); doc.text("Parabéns pelo engajamento ambiental este mês! 🌍", 105, doc.internal.pageSize.height - 15, { align: "center" });
   window.open(doc.output('bloburl'), '_blank');
 };
 
@@ -340,6 +378,8 @@ window.mudarAba = (nome) => {
 
 window.logout = async () => { await signOut(auth); };
 
+let unsubHistorico = null;
+
 onAuthStateChanged(auth, (u) => {
   const loginBox = document.getElementById("loginBox");
   const appContainer = document.getElementById("appContainer");
@@ -351,11 +391,33 @@ onAuthStateChanged(auth, (u) => {
     appContainer.classList.remove("hidden");
     usuarioEl.innerText = u.email;
     carregarMensagens();
-    atualizarNivel();
+
+    const q = query(collection(db, "historico_residuos"), where("usuario", "==", u.email));
+    unsubHistorico = onSnapshot(q, (snap) => {
+      historicoResiduos = { comida: 0, papelao: 0, plastico: 0, vidro: 0, aluminio: 0, pilha: 0 };
+      snap.forEach((doc) => {
+        const item = doc.data();
+        if (historicoResiduos[item.material] !== undefined) {
+          historicoResiduos[item.material]++;
+        }
+      });
+      
+      let totalItens = Object.values(historicoResiduos).reduce((a, b) => a + b, 0);
+      const elXP = document.getElementById("xpUsuario");
+      if (elXP) elXP.innerText = 150 + (totalItens * 50);
+      
+      atualizarNivel();
+      atualizarRelatorioGrafico();
+    });
+
   } else {
     loginBox.classList.remove("hidden");
     appContainer.classList.add("hidden");
     if(window.pararCamera) window.pararCamera();
+    if(unsubHistorico) {
+      unsubHistorico();
+      unsubHistorico = null;
+    }
   }
 });
 
@@ -392,10 +454,27 @@ function carregarMensagens() {
 function inicializarMapa() {
   const container = document.getElementById("mapa-container");
   if(!container) return;
-  mapa = L.map('mapa-container').setView([-15.78, -47.92], 5);
+  
+  // Focado inicialmente na região de Barretos/SP
+  mapa = L.map('mapa-container').setView([-20.5591, -48.5680], 13); 
+  
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
+    attribution: '© OpenStreetMap contributors'
   }).addTo(mapa);
+
+  // Ecopontos Oficiais de Barretos/SP para descarte de eletrônicos, pilhas, baterias e recicláveis
+  const pontos = [
+    {lat: -20.5694, lng: -48.5772, nome: "Ecoponto Exposição", tipo: "Pilhas, Baterias e Eletrônicos<br>Rua Fábio Junqueira Franco, 301"},
+    {lat: -20.5401, lng: -48.5583, nome: "Ecoponto Califórnia", tipo: "Pilhas, Baterias e Eletrônicos<br>Rua Cristiano de Carvalho, 50"},
+    {lat: -20.5750, lng: -48.5830, nome: "Ecoponto Nadir Kenan", tipo: "Pilhas, Baterias e Eletrônicos<br>Rua Rage Caiel, 400"},
+    {lat: -20.5505, lng: -48.5450, nome: "Ecoponto Christiano Carvalho", tipo: "Pilhas, Baterias e Eletrônicos<br>Av. João Ribeiro do Nascimento"},
+    {lat: -20.5810, lng: -48.5600, nome: "Ecoponto Santa Cecília", tipo: "Pilhas, Baterias e Eletrônicos<br>Av. Antônio Machado das Dores"},
+    {lat: -20.5300, lng: -48.5700, nome: "Ecoponto Leda Amendola", tipo: "Pilhas, Baterias e Eletrônicos<br>Rua João Botacini, s/nº"}
+  ];
+
+  pontos.forEach(pt => {
+    L.marker([pt.lat, pt.lng], {icon: L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/149/149062.png', iconSize: [28,28] })}).addTo(mapa).bindPopup(`<b>${pt.nome}</b><br>${pt.tipo}`);
+  });
 
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
@@ -403,14 +482,7 @@ function inicializarMapa() {
         usuarioLat = pos.coords.latitude; usuarioLng = pos.coords.longitude;
         mapa.setView([usuarioLat, usuarioLng], 14);
         L.marker([usuarioLat, usuarioLng], {icon: L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png', iconSize: [32,32] })}).addTo(mapa).bindPopup("Você está aqui! 📍").openPopup();
-        const pontos = [
-          {lat: usuarioLat + 0.012, lng: usuarioLng - 0.008, nome: "Ponto Coleta", tipo: "Plástico / Vidro"},
-          {lat: usuarioLat - 0.009, lng: usuarioLng + 0.015, nome: "Ecoponto", tipo: "Pilhas"}
-        ];
-        pontos.forEach(pt => {
-          L.marker([pt.lat, pt.lng], {icon: L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/149/149062.png', iconSize: [28,28] })}).addTo(mapa).bindPopup(`<b>${pt.nome}</b><br>${pt.tipo}`);
-        });
-      }, (erro) => { alert("Sem localização: " + erro.message); }
+      }, (erro) => { console.log("Sem localização: " + erro.message); }
     );
   }
 }
@@ -418,6 +490,7 @@ function inicializarMapa() {
 window.pesquisarNoMapa = () => {
   const query = document.getElementById("campoBuscaMapa").value.trim();
   if (query) {
+    // LINK OFICIAL DE BUSCA DO GOOGLE MAPS CORRIGIDO AQUI
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank');
   } else {
     alert("Digite um local para pesquisar no mapa!");
@@ -425,7 +498,6 @@ window.pesquisarNoMapa = () => {
 };
 
 window.onload = function() {
-    atualizarNivel();
     if (sessionStorage.getItem('bannerFechado') === 'true') {
         const banner = document.getElementById('banner-beta');
         if(banner) banner.style.display = 'none';
@@ -533,16 +605,23 @@ window.scanearObjeto = async () => {
     const dadosObjeto = dadosReciclagem[maiorClasse];
     if (dadosObjeto) {
       somMoeda.play().catch(e => {});
-      const elXP = document.getElementById("xpUsuario");
-      if(elXP) elXP.innerText = parseInt(elXP.innerText) + 50;
-      historicoResiduos[maiorClasse]++;
-      atualizarNivel();
+      
+      const u = auth.currentUser;
+      if (u) {
+        await addDoc(collection(db, "historico_residuos"), {
+          usuario: u.email,
+          material: maiorClasse,
+          data: serverTimestamp()
+        });
+      }
 
       let estiloBorda = maiorClasse === "pilha"? "border-orange-500" : "border-green-500";
       let icone = maiorClasse === "pilha"? "⚠️" : "♻️";
       let corBotaoMapa = maiorClasse === "pilha"? "bg-orange-600" : "bg-emerald-600";
       
-      let termoBusca = maiorClasse === "pilha" ? "postos de coleta de pilhas" : "pontos de reciclagem";
+      let termoBusca = maiorClasse === "pilha" ? "postos de coleta de pilhas e baterias" : "pontos de reciclagem de " + maiorClasse;
+      
+      // LINK OFICIAL DE BUSCA DO GOOGLE MAPS CORRIGIDO AQUI TAMBÉM
       let urlMaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(termoBusca)}`;
 
       let botaoMapa = dadosObjeto.buscaMapa ? `<button type="button" onclick="window.open('${urlMaps}', '_blank')" class="w-full ${corBotaoMapa} text-white py-3 rounded-xl text-xs font-bold shadow-sm transition mt-2"><i class="fa-solid fa-map-location-dot"></i> Encontrar Pontos de Coleta</button>` : "";
@@ -777,7 +856,7 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
           <div id="relatorioLista"></div>
 
           <button onclick="imprimirSessaoAtualAmbiental()" class="w-full bg-slate-800 text-white py-4 rounded-xl font-bold shadow-md">
-            <i class="fa-solid fa-receipt mr-2"></i> Sessão Atual
+            <i class="fa-solid fa-receipt mr-2"></i> Histórico Completo
           </button>
           
           <div class="grid grid-cols-2 gap-3">
