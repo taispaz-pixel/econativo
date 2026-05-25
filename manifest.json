@@ -1,9 +1,9 @@
 {
   "name": "EcoNativo - Inteligência Ambiental",
   "short_name": "EcoNativo",
-  "description": "App de reciclagem inteligente com IA",
-  "start_url": "/ecoscan/",
-  "scope": "/ecoscan/",
+  "description": "App de reciclagem inteligente",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f0fdf4",
   "theme_color": "#16a34a",
