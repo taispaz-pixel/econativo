@@ -490,7 +490,6 @@ function inicializarMapa() {
 window.pesquisarNoMapa = () => {
   const query = document.getElementById("campoBuscaMapa").value.trim();
   if (query) {
-    // LINK OFICIAL DE BUSCA DO GOOGLE MAPS CORRIGIDO AQUI
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank');
   } else {
     alert("Digite um local para pesquisar no mapa!");
@@ -619,9 +618,8 @@ window.scanearObjeto = async () => {
       let icone = maiorClasse === "pilha"? "⚠️" : "♻️";
       let corBotaoMapa = maiorClasse === "pilha"? "bg-orange-600" : "bg-emerald-600";
       
-      let termoBusca = maiorClasse === "pilha" ? "postos de coleta de pilhas e baterias" : "pontos de reciclagem de " + maiorClasse;
+      let termoBusca = maiorClasse === "pilha" ? "posto de coleta de pilhas e Baterias" : "pontos de reciclagem de " + maiorClasse;
       
-      // LINK OFICIAL DE BUSCA DO GOOGLE MAPS CORRIGIDO AQUI TAMBÉM
       let urlMaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(termoBusca)}`;
 
       let botaoMapa = dadosObjeto.buscaMapa ? `<button type="button" onclick="window.open('${urlMaps}', '_blank')" class="w-full ${corBotaoMapa} text-white py-3 rounded-xl text-xs font-bold shadow-sm transition mt-2"><i class="fa-solid fa-map-location-dot"></i> Encontrar Pontos de Coleta</button>` : "";
@@ -634,35 +632,16 @@ window.scanearObjeto = async () => {
           </div>
           ${botaoMapa}
         </div>`;
+    } else {
+      resultado.innerHTML = `
+        <div class="p-4 rounded-xl bg-amber-50 text-amber-900 text-xs font-semibold text-center mt-3 border border-amber-200">
+          ⚠️ O objeto foi reconhecido pela IA como "<b>${dadosNyckel.labelName}</b>", mas ainda não temos uma categoria de reciclagem cadastrada para ele.
+        </div>`;
     }
   } catch (e) { 
     console.error("ERRO SCAN:", e);
     resultado.innerHTML = `<div class="p-4 rounded-xl bg-red-50 text-red-900 text-xs font-semibold text-center mt-3">❌ Erro de processamento:<br>${e.message}</div>`; 
   }
-};
-
-window.analisarLinkRender = async () => {
-  const elLink = document.getElementById("linkProduto");
-  const resultado = document.getElementById("resultadoScan");
-  if(!elLink || !resultado) return;
-  const link = elLink.value.trim();
-  if(!link) { alert("Cole um link primeiro!"); return; }
-  resultado.classList.remove("hidden");
-  resultado.innerHTML = `<div class="text-center py-6"><i class="fa-solid fa-robot text-4xl text-blue-500 mb-3 animate-pulse"></i><p class="font-semibold text-slate-700 text-xs">A Inteligência está lendo o site...</p></div>`;
-  try {
-    const response = await fetch("https://ecoscan-api-asjw.onrender.com/api/analisar", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: link })
-    });
-    const data = await response.json();
-    if(data.sucesso) {
-      somMoeda.play().catch(e => {});
-      resultado.innerHTML = `
-        <div class="p-5 rounded-xl bg-blue-50 border-l-4 border-blue-500 shadow-sm mt-3 animate-fade-in">
-          <div class="flex items-center gap-3 mb-3"><span class="text-2xl">🤖</span><h4 class="font-bold text-blue-900 text-base">Análise da OpenAI</h4></div>
-          <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">${data.analise}</p>
-        </div>`;
-    } else { alert("Erro: " + data.erro); }
-  } catch (e) { alert("Falha na comunicação com Render!"); }
 };
 </script>
 <style>
@@ -813,12 +792,6 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
           <div class="grid grid-cols-2 gap-2 mb-4">
             <button type="button" onclick="abrirCamera()" class="bg-green-600 text-white py-3 rounded-xl text-sm font-bold">📷 Ligar</button>
             <button type="button" onclick="scanearObjeto()" class="bg-amber-500 text-white py-3 rounded-xl text-sm font-bold">🔍 Analisar Foto</button>
-          </div>
-
-          <div class="pt-4 border-t border-slate-200">
-            <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Ou analisar link</h4>
-            <input id="linkProduto" type="text" placeholder="Cole o link do produto..." class="w-full p-3 border rounded-xl" />
-            <button onclick="analisarLinkRender()" class="w-full bg-blue-600 text-white py-2 mt-2 rounded-xl">Analisar Link</button>
           </div>
 
           <div id="resultadoScan" class="mt-4 p-4 bg-green-50 rounded-xl border border-green-200 hidden"></div>
