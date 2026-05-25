@@ -211,6 +211,12 @@ window.salvarFeedback = async () => {
     } catch(e) { alert("Erro ao salvar feedback."); }
 };
 
+// --- FUNÇÃO PARA LIMPAR EMOJIS DO PDF ---
+function removerEmojis(texto) {
+    if(!texto) return "";
+    return texto.replace(/🌱|🟤|♻️|🔵|🔴|🟢|🟡|⚠️|🟠/g, '').trim();
+}
+
 async function buscarAvaliacoes(dias = 0) {
   const u = auth.currentUser;
   if(!u) return [];
@@ -253,7 +259,7 @@ function gerarPDFAvaliacoes(avaliacoes, titulo) {
 // --- FUNÇÃO AUXILIAR PARA BUSCAR E CONSOLIDAR DADOS REAIS DO BANCO ---
 async function buscarHistoricoPeriodo(dias) {
   const u = auth.currentUser;
-  if (!u) return [["Nenhum dado registrado no período", "-", "-", "-", "-"]];
+  if (!u) return [["Nenhum dado registrado no período", "-", "-", "-", "-", "-"]];
   try {
     const q = query(collection(db, "historico_residuos"), where("usuario", "==", u.email));
     const querySnapshot = await getDocs(q);
@@ -279,22 +285,24 @@ async function buscarHistoricoPeriodo(dias) {
       if (qtd > 0) {
         let pts = qtd * dadosReciclagem[chave].pontos;
         let kg = qtd * dadosReciclagem[chave].pesoKg;
+        let impacto = qtd * dadosReciclagem[chave].pesoImpacto;
         linhas.push([
-          dadosReciclagem[chave].nome,
+          removerEmojis(dadosReciclagem[chave].nome),
           `${qtd} un`,
           `${kg.toFixed(3).replace('.', ',')} kg`,
           `+${pts} pts`,
-          dadosReciclagem[chave].tipo
+          `↓ ${impacto.toFixed(2)}%`,
+          removerEmojis(dadosReciclagem[chave].tipo)
         ]);
       }
     }
     if (linhas.length === 0) {
-      linhas.push(["Nenhum dado registrado no período", "-", "-", "-", "-"]);
+      linhas.push(["Nenhum dado registrado no período", "-", "-", "-", "-", "-"]);
     }
     return linhas;
   } catch (err) {
     console.error("Erro ao buscar histórico:", err);
-    return [["Erro ao carregar dados do banco", "-", "-", "-", "-"]];
+    return [["Erro ao carregar dados do banco", "-", "-", "-", "-", "-"]];
   }
 }
 
@@ -311,12 +319,21 @@ window.imprimirSessaoAtualAmbiental = () => {
   let rows = [];
   for (const [chave, qtd] of Object.entries(historicoResiduos)) {
     if (qtd > 0) {
-      let pts = qtd * dadosReciclagem[chave].pontos; let kg = qtd * dadosReciclagem[chave].pesoKg; 
-      rows.push([dadosReciclagem[chave].nome, `${qtd} un`, `${kg.toFixed(3).replace('.', ',')} kg`, `+${pts} pts`, dadosReciclagem[chave].tipo]);
+      let pts = qtd * dadosReciclagem[chave].pontos; 
+      let kg = qtd * dadosReciclagem[chave].pesoKg; 
+      let impacto = qtd * dadosReciclagem[chave].pesoImpacto;
+      rows.push([
+        removerEmojis(dadosReciclagem[chave].nome), 
+        `${qtd} un`, 
+        `${kg.toFixed(3).replace('.', ',')} kg`, 
+        `+${pts} pts`, 
+        `↓ ${impacto.toFixed(2)}%`,
+        removerEmojis(dadosReciclagem[chave].tipo)
+      ]);
     }
   }
-  if(rows.length === 0) rows.push(["Nenhum dado registrado", "-", "-", "-", "-"]);
-  doc.autoTable({ startY: 65, head: [['Material', 'Qtd', 'Massa', 'Pontos', 'Destinação']], body: rows, headStyles: { fillColor: [22, 163, 74] }, theme: 'striped' });
+  if(rows.length === 0) rows.push(["Nenhum dado registrado", "-", "-", "-", "-", "-"]);
+  doc.autoTable({ startY: 65, head: [['Material', 'Qtd', 'Massa', 'Pontos', 'Impacto', 'Destinação']], body: rows, headStyles: { fillColor: [22, 163, 74] }, theme: 'striped' });
   doc.setFontSize(9); doc.setFont("Helvetica", "italic"); doc.text("EcoNativo © 2026", 105, doc.internal.pageSize.height - 15, { align: "center" });
   window.open(doc.output('bloburl'), '_blank');
 };
@@ -334,7 +351,7 @@ window.imprimirExtrato15Dias = async () => {
   
   let linesData = await buscarHistoricoPeriodo(15);
   
-  doc.autoTable({ startY: 72, head: [['Material', 'Qtd', 'Massa Total', 'EcoPoints', 'Destinação']], body: linesData, headStyles: { fillColor: [16, 185, 129] }, theme: 'grid' });
+  doc.autoTable({ startY: 72, head: [['Material', 'Qtd', 'Massa', 'Pontos', 'Impacto', 'Destinação']], body: linesData, headStyles: { fillColor: [16, 185, 129] }, theme: 'grid' });
   doc.setFontSize(9); doc.setFont("Helvetica", "italic"); doc.text("Evolução sustentável: redução de impacto calculada! 🌱", 105, doc.internal.pageSize.height - 15, { align: "center" });
   window.open(doc.output('bloburl'), '_blank');
 };
@@ -352,7 +369,7 @@ window.imprimirExtrato30Dias = async () => {
   
   let linesData = await buscarHistoricoPeriodo(30);
   
-  doc.autoTable({ startY: 72, head: [['Material', 'Qtd', 'Massa Total', 'EcoPoints', 'Destinação']], body: linesData, headStyles: { fillColor: [16, 185, 129] }, theme: 'grid' });
+  doc.autoTable({ startY: 72, head: [['Material', 'Qtd', 'Massa', 'Pontos', 'Impacto', 'Destinação']], body: linesData, headStyles: { fillColor: [16, 185, 129] }, theme: 'grid' });
   doc.setFontSize(9); doc.setFont("Helvetica", "italic"); doc.text("Parabéns pelo engajamento ambiental este mês! 🌍", 105, doc.internal.pageSize.height - 15, { align: "center" });
   window.open(doc.output('bloburl'), '_blank');
 };
