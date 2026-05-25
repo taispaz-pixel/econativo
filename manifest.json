@@ -1,6 +1,6 @@
 {
-  "name": "EcoScan - Inteligência Ambiental",
-  "short_name": "EcoScan",
+  "name": "EcoNativo - Inteligência Ambiental",
+  "short_name": "EcoNativo",
   "description": "App de reciclagem inteligente com IA",
   "start_url": "/ecoscan/",
   "scope": "/ecoscan/",
