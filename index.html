@@ -84,14 +84,6 @@ let usuarioLng = null;
 let tokenNyckelSalvo = null;
 let tempoToken = 0;
 
-// ✅ FUNÇÃO DE BUSCA NO GOOGLE MAPS (CORRIGIDA CONFORME VOCÊ PEDIU)
-window.abrirBuscaMaps = () => {
-    const input = document.getElementById("inputBuscaMapa");
-    const termo = input.value.trim() || "pontos de coleta";
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(termo)}`;
-    window.open(url, '_blank');
-};
-
 function atualizarNivel() {
   const elXP = document.getElementById("xpUsuario");
   const elTitulo = document.getElementById("tituloUsuario");
@@ -423,16 +415,25 @@ function inicializarMapa() {
   }
 }
 
+window.pesquisarNoMapa = () => {
+  const query = document.getElementById("campoBuscaMapa").value.trim();
+  if (query) {
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank');
+  } else {
+    alert("Digite um local para pesquisar no mapa!");
+  }
+};
+
 window.onload = function() {
     atualizarNivel();
     if (sessionStorage.getItem('bannerFechado') === 'true') {
-        const banner = document.getElementById("banner-beta");
+        const banner = document.getElementById('banner-beta');
         if(banner) banner.style.display = 'none';
     }
 };
 
 window.fecharBanner = () => {
-    const banner = document.getElementById("banner-beta");
+    const banner = document.getElementById('banner-beta');
     if(banner) banner.style.top = '-100px';
     sessionStorage.setItem('bannerFechado', 'true');
 };
@@ -540,12 +541,11 @@ window.scanearObjeto = async () => {
       let estiloBorda = maiorClasse === "pilha"? "border-orange-500" : "border-green-500";
       let icone = maiorClasse === "pilha"? "⚠️" : "♻️";
       let corBotaoMapa = maiorClasse === "pilha"? "bg-orange-600" : "bg-emerald-600";
+      
+      let termoBusca = maiorClasse === "pilha" ? "postos de coleta de pilhas" : "pontos de reciclagem";
+      let urlMaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(termoBusca)}`;
 
-      // ✅ CÓDIGO NOVO DO BOTÃO ADICIONADO AQUI (EXATAMENTE COMO VOCÊ QUIS)
-      let termoBusca = dadosObjeto.buscaMapa || "pontos de coleta";
-      let termoEncoded = encodeURIComponent(termoBusca);
-      let urlMapa = `https://www.google.com/maps/search/?api=1&query=${termoEncoded}`;
-      let botaoMapa = `<button type="button" onclick="window.open('${urlMapa}', '_blank')" class="w-full ${corBotaoMapa} text-white py-3 rounded-xl text-xs font-bold shadow-sm transition mt-2"><i class="fa-solid fa-map-location-dot"></i> Encontrar Ponto de Coleta</button>`;
+      let botaoMapa = dadosObjeto.buscaMapa ? `<button type="button" onclick="window.open('${urlMaps}', '_blank')" class="w-full ${corBotaoMapa} text-white py-3 rounded-xl text-xs font-bold shadow-sm transition mt-2"><i class="fa-solid fa-map-location-dot"></i> Encontrar Pontos de Coleta</button>` : "";
 
       resultado.innerHTML = `
         <div class="space-y-3 mt-3 animate-fade-in no-print">
@@ -617,8 +617,6 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
 .pdf-btn-sessao:hover { background-color: #1e293b; }
 
 #mapa-container { height: 400px; border-radius: 16px; z-index: 1; }
-
-.aba-conteudo { display: none; }
 </style>
 </head>
 
@@ -672,182 +670,166 @@ input[type="date"]:valid::-webkit-datetime-edit-text { color: #475569; }
         <h3 id="tituloAuth" class="text-lg font-bold text-slate-700 text-center mb-3">Acesse sua Conta</h3>
         
         <div id="camposCadastro" class="space-y-4 hidden">
-          <input id="nomeCompleto" type="text" placeholder="👤 Nome Completo" class="w-full p
-            -4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-green-500" />
+          <input id="nomeCompleto" type="text" placeholder="👤 Nome Completo" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-green-500" />
           <input id="whatsapp" type="tel" placeholder="💬 WhatsApp (com DDD)" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-green-500" />
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">📅</span>
+            <input id="dataNascimento" type="date" required class="w-full p-4 pl-12 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 focus:outline-none focus:border-green-500 appearance-none" />
+          </div>
         </div>
 
-        <input id="email" type="email" placeholder="✉️ Seu E-mail" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-green-500" />
-        <input id="senha" type="password" placeholder="🔒 Sua Senha" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-green-500" />
+        <input id="email" type="email" placeholder="📧 E-mail" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-green-500" />
+        <input id="senha" type="password" placeholder="🔒 Senha" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-green-500" />
+        
+        <div id="linkEsqueci" class="text-right">
+          <button type="button" onclick="esquecerSenha()" class="text-xs text-green-600 font-semibold hover:underline">Esqueceu sua senha?</button>
+        </div>
 
-        <button id="btnEntrar" onclick="signInUser()" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold text-base hover:bg-green-700 transition">Entrar</button>
-        <button id="btnCriarConta" onclick="criarNovaConta()" class="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold text-base hover:bg-emerald-600 transition hidden">Criar Conta Gratuita</button>
+        <div class="flex flex-col gap-2 pt-2">
+          <button id="btnEntrar" type="button" class="w-full bg-green-600 text-white p-4 rounded-xl font-bold shadow-sm hover:bg-green-700"
+            onclick="signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('senha').value)">Entrar</button>
+          <button id="btnCriarConta" type="button" class="w-full bg-slate-900 text-white p-4 rounded-xl font-bold shadow-sm hover:bg-slate-800 hidden"
+            onclick="createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('senha').value)">Criar Conta</button>
+        </div>
 
-        <p id="linkEsqueci" onclick="esquecerSenha()" class="text-center text-sm text-green-700 font-semibold cursor-pointer hover:underline">Esqueci minha senha</p>
-        <p id="btnAlternarModo" onclick="alternarModoAuth()" class="text-center text-sm text-slate-600 cursor-pointer hover:underline mt-2">Não tem conta? Cadastre-se agora</p>
+        <div class="text-center pt-2">
+          <button id="btnAlternarModo" type="button" onclick="alternarModoAuth()" class="text-xs text-slate-500 font-bold hover:underline">Não tem conta? Cadastre-se agora</button>
+        </div>
       </div>
 
-      <div id="appContainer" class="hidden">
-        <div class="flex justify-between items-center mb-4">
-          <span id="usuario" class="text-sm font-bold text-slate-700"></span>
-          <button onclick="logout()" class="text-sm text-red-600 font-bold">Sair</button>
+      <div id="appContainer" class="hidden space-y-4">
+        <div class="flex justify-between items-center bg-green-50 p-3 rounded-xl text-xs">
+          <span class="text-slate-600 font-medium">👤 <span id="usuario"></span></span>
+          <button type="button" onclick="logout()" class="text-red-600 font-bold hover:underline">Sair</button>
         </div>
 
-        <div class="grid grid-cols-3 gap-2 mb-6">
-          <button data-aba="scan" onclick="mudarAba('scan')" class="aba-btn bg-green-600 text-white font-bold py-3 rounded-xl text-xs">📷 Análise</button>
-          <button data-aba="mapa" onclick="mudarAba('mapa')" class="aba-btn text-slate-600 py-3 rounded-xl text-xs">📍 Mapa</button>
-          <button data-aba="relatorio" onclick="mudarAba('relatorio')" class="aba-btn text-slate-600 py-3 rounded-xl text-xs">📊 Relatório</button>
-          <button data-aba="feedback" onclick="mudarAba('feedback')" class="aba-btn text-slate-600 py-3 rounded-xl text-xs">⭐ Avaliar</button>
-          <button data-aba="mensagens" onclick="mudarAba('mensagens')" class="aba-btn text-slate-600 py-3 rounded-xl text-xs">💬 Mural</button>
-          <button data-aba="link" onclick="mudarAba('link')" class="aba-btn text-slate-600 py-3 rounded-xl text-xs">🔗 Análise Web</button>
+        <div class="grid grid-cols-5 gap-1 mb-4">
+          <button class="aba-btn text-slate-600 py-2 rounded-lg text-sm" data-aba="scan" onclick="mudarAba('scan')">
+            <i class="fa-solid fa-camera mr-1"></i> Scan
+          </button>
+          <button class="aba-btn text-slate-600 py-2 rounded-lg text-sm" data-aba="mapa" onclick="mudarAba('mapa')">
+            <i class="fa-solid fa-location-dot mr-1"></i> Mapa
+          </button>
+          <button class="aba-btn text-slate-600 py-2 rounded-lg text-sm" data-aba="relatorio" onclick="mudarAba('relatorio')">
+            <i class="fa-solid fa-chart-column mr-1"></i> Dados
+          </button>
+          <button class="aba-btn bg-green-600 text-white font-bold py-2 rounded-lg text-sm" data-aba="avaliar" onclick="mudarAba('avaliar')">
+            <i class="fa-solid fa-star mr-1"></i> Avaliar
+          </button>
+          <button class="aba-btn text-slate-600 py-2 rounded-lg text-sm" data-aba="mural" onclick="mudarAba('mural')">
+            <i class="fa-solid fa-comment-dots mr-1"></i> Mural
+          </button>
         </div>
 
-        <!-- ABA SCAN -->
-        <div id="aba-scan" class="aba-conteudo block">
-          <div class="scan-frame rounded-xl mb-4 relative overflow-hidden">
+        <div id="aba-scan" class="aba-conteudo hidden space-y-4">
+          <h3 class="font-bold text-sm text-slate-700">📷 Escanear Resíduo</h3>
+          <div class="scan-frame rounded-xl overflow-hidden relative">
+            <video id="cameraFeed" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
+            <div id="cameraPlaceholder" class="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center text-white">
+              <i class="fa-solid fa-camera text-4xl opacity-20 mb-2"></i>
+              <p class="text-xs opacity-40">Câmera aguardando ativação</p>
+            </div>
             <div class="scan-line"></div>
-            <video id="cameraFeed" autoplay playsinline class="w-full h-full object-cover hidden"></video>
-            <div id="cameraPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center text-white bg-slate-900/90">
-              <i class="fa-solid fa-camera text-4xl mb-2 text-slate-400"></i>
-              <p class="text-xs text-slate-300">Câmera desligada</p>
-            </div>
           </div>
-          <button onclick="abrirCamera()" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold mb-2">Ligar Câmera</button>
-          <button onclick="scanearObjeto()" class="w-full bg-amber-500 text-white py-3 rounded-xl font-bold">Analisar Resíduo</button>
-          <div id="resultadoScan" class="hidden mt-4"></div>
+          <div class="grid grid-cols-2 gap-2 mb-4">
+            <button type="button" onclick="abrirCamera()" class="bg-green-600 text-white py-3 rounded-xl text-sm font-bold">📷 Ligar</button>
+            <button type="button" onclick="scanearObjeto()" class="bg-amber-500 text-white py-3 rounded-xl text-sm font-bold">🔍 Analisar Foto</button>
+          </div>
+
+          <div class="pt-4 border-t border-slate-200">
+            <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Ou analisar link</h4>
+            <input id="linkProduto" type="text" placeholder="Cole o link do produto..." class="w-full p-3 border rounded-xl" />
+            <button onclick="analisarLinkRender()" class="w-full bg-blue-600 text-white py-2 mt-2 rounded-xl">Analisar Link</button>
+          </div>
+
+          <div id="resultadoScan" class="mt-4 p-4 bg-green-50 rounded-xl border border-green-200 hidden"></div>
         </div>
 
-        <!-- ABA MAPA -->
-        <div id="aba-mapa" class="aba-conteudo">
-          <h3 class="font-bold mb-2 text-slate-700">Buscar Locais de Descarte</h3>
-          <input id="inputBuscaMapa" type="text" placeholder="Ex: reciclagem, pilhas, vidro..." class="w-full p-4 border rounded-xl mb-2" />
-          <button onclick="abrirBuscaMaps()" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold mb-4">
-             <i class="fa-solid fa-map"></i> Abrir no Google Maps
-          </button>
-          <div id="mapa-container"></div>
-        </div>
-
-        <!-- ABA RELATÓRIO -->
-        <div id="aba-relatorio" class="aba-conteudo">
-          <h3 class="font-bold mb-3 text-slate-700">Seu Impacto Ambiental</h3>
-          <div class="grid grid-cols-2 gap-3 mb-4">
-            <div class="bg-green-50 p-3 rounded-xl text-center"><p class="text-xs text-green-700">Itens Reciclados</p><p id="relTotalItens" class="font-bold text-lg text-green-800">0</p></div>
-            <div class="bg-blue-50 p-3 rounded-xl text-center"><p class="text-xs text-blue-700">Massa Total</p><p id="relTotalKg" class="font-bold text-lg text-blue-800">0.00 kg</p></div>
-            <div class="bg-amber-50 p-3 rounded-xl text-center"><p class="text-xs text-amber-700">EcoPoints</p><p id="relTotalPontos" class="font-bold text-lg text-amber-800">0 pts</p></div>
-            <div class="bg-purple-50 p-3 rounded-xl text-center"><p class="text-xs text-purple-700">Redução Impacto</p><p id="relTotalImpacto" class="font-bold text-lg text-purple-800">↓ 0.00%</p></div>
-          </div>
-          
-          <div id="relatorioLista" class="mb-5"></div>
-
-          <h4 class="font-bold text-sm mb-2 text-slate-700">📄 Gerar Extrato PDF</h4>
-          <button onclick="imprimirSessaoAtualAmbiental()" class="pdf-btn-sessao">📋 Sessão Atual</button>
-          <div class="flex justify-between gap-2">
-            <button onclick="imprimirExtrato15Dias()" class="pdf-btn-15dias">📆 Últimos 15 Dias</button>
-            <button onclick="imprimirExtrato30Dias()" class="pdf-btn-30dias">📆 Últimos 30 Dias</button>
-          </div>
-        </div>
-
-        <!-- ABA FEEDBACK -->
-        <div id="aba-feedback" class="aba-conteudo">
-          <h3 class="font-bold mb-3 text-slate-700">⭐ Avalie o EcoNativo</h3>
-          <div class="dark-card mb-4">
-            <label class="block text-xs font-medium text-slate-300 mb-1">Nota Geral (0 a 10)</label>
-            <input type="range" min="0" max="10" value="8" id="notaEstrelas" class="w-full h-2 bg-purple-700 rounded-lg appearance-none cursor-pointer">
-            <div class="flex justify-between text-[10px] text-slate-400 mt-1"><span>Ruim</span><span>Excelente</span></div>
-
-            <label class="block text-xs font-medium text-slate-300 mt-3 mb-1">O que achou?</label>
-            <select id="catAvaliacao" onchange="atualizarSubCategorias()" class="dark-input">
-              <option>Escolha uma opção...</option>
-              <option>Boa</option>
-              <option>Ruim</option>
-              <option>Superou expectativas</option>
-            </select>
-
-            <div id="subCategoriasContainer" class="mt-2"></div>
-          </div>
-
-          <button onclick="salvarFeedback()" class="w-full bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 transition">💾 Salvar Avaliação</button>
-          
-          <h4 class="font-bold text-sm mt-6 mb-2 text-slate-700">📄 Meus Relatórios de Avaliação</h4>
-          <div class="flex flex-col gap-2">
-            <button onclick="imprimirAvaliacaoHoje()" class="pdf-btn-sessao">📄 Avaliações de Hoje</button>
-            <div class="flex gap-2">
-              <button onclick="imprimirAvaliacao15Dias()" class="pdf-btn-15dias">📄 15 Dias</button>
-              <button onclick="imprimirAvaliacao30Dias()" class="pdf-btn-30dias">📄 30 Dias</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- ABA MENSAGENS -->
-        <div id="aba-mensagens" class="aba-conteudo">
-          <h3 class="font-bold mb-3 text-slate-700">💬 Mural Comunitário</h3>
-          <div id="listaMensagens" class="max-h-[400px] overflow-y-auto mb-3 pr-1"></div>
+        <div id="aba-mapa" class="aba-conteudo hidden space-y-4">
+          <h3 class="font-bold text-lg text-slate-700 flex items-center gap-2">
+            <i class="fa-solid fa-location-dot text-green-600"></i> Buscar no Mapa
+          </h3>
           <div class="flex gap-2">
-            <input id="novaMensagem" type="text" placeholder="Escreva uma mensagem..." class="flex-1 p-3 border rounded-xl" />
-            <button onclick="enviarMensagem()" class="bg-green-600 text-white px-4 rounded-xl font-bold">Enviar</button>
+            <input id="campoBuscaMapa" type="text" placeholder="Ex: posto de reciclagem, mercado..." class="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-500" />
+            <button type="button" onclick="pesquisarNoMapa()" class="bg-green-600 text-white px-4 rounded-xl hover:bg-green-700 transition"><i class="fa-solid fa-search"></i></button>
+          </div>
+          <div id="mapa-container" class="w-full"></div>
+        </div>
+
+        <div id="aba-relatorio" class="aba-conteudo hidden space-y-4">
+          <h3 class="font-bold text-sm text-slate-700">📊 Suas Métricas</h3>
+          
+          <div class="grid grid-cols-3 gap-2 text-center mb-3">
+            <div class="bg-slate-50 p-2 rounded-lg">
+              <p class="text-xs text-slate-500">Total Itens</p>
+              <p class="font-bold text-green-700" id="relTotalItens">0</p>
+            </div>
+            <div class="bg-slate-50 p-2 rounded-lg">
+              <p class="text-xs text-slate-500">Massa Total</p>
+              <p class="font-bold text-green-700" id="relTotalKg">0 kg</p>
+            </div>
+            <div class="bg-slate-50 p-2 rounded-lg">
+              <p class="text-xs text-slate-500">Impacto</p>
+              <p class="font-bold text-green-700" id="relTotalImpacto">0%</p>
+            </div>
+          </div>
+
+          <div id="relatorioLista"></div>
+
+          <button onclick="imprimirSessaoAtualAmbiental()" class="w-full bg-slate-800 text-white py-4 rounded-xl font-bold shadow-md">
+            <i class="fa-solid fa-receipt mr-2"></i> Sessão Atual
+          </button>
+          
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="imprimirExtrato15Dias()" class="bg-emerald-600 text-white py-4 rounded-xl font-bold shadow-md text-xs">
+              <i class="fa-solid fa-calendar-days mr-1"></i> Extrato 15 Dias
+            </button>
+            <button onclick="imprimirExtrato30Dias()" class="bg-emerald-600 text-white py-4 rounded-xl font-bold shadow-md text-xs">
+              <i class="fa-solid fa-calendar-days mr-1"></i> Extrato 30 Dias
+            </button>
           </div>
         </div>
 
-        <!-- ABA LINK / ANÁLISE WEB -->
-        <div id="aba-link" class="aba-conteudo">
-          <h3 class="font-bold mb-3 text-slate-700">🔗 Análise de Produto (IA)</h3>
-          <p class="text-xs text-slate-600 mb-3">Cole o link de um produto e descubra seu impacto ambiental e como descartá-lo corretamente.</p>
-          <input id="linkProduto" type="url" placeholder="https://exemplo.com/produto" class="w-full p-4 border rounded-xl mb-3" />
-          <button onclick="analisarLinkRender()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition">
-            🤖 Analisar com Inteligência Artificial
-          </button>
-          <div id="resultadoScan" class="mt-4"></div>
+        <div id="aba-avaliar" class="aba-conteudo dark-bg">
+            <div class="dark-card">
+                <h4 class="text-xs font-bold text-fuchsia-400 uppercase mb-4">Sua Opinião</h4>
+                <select id="notaEstrelas" class="dark-input text-xs">
+                  <option>5 Estrelas</option>
+                  <option>4 Estrelas</option>
+                  <option>3 Estrelas</option>
+                  <option>2 Estrelas</option>
+                  <option>1 Estrela</option>
+                </select>
+                <select id="catAvaliacao" onchange="atualizarSubCategorias()" class="dark-input text-xs">
+                    <option value="Boa">Boa</option>
+                    <option value="Ruim">Ruim</option>
+                    <option value="Superou">Superou</option>
+                </select>
+                <div id="subCategoriasContainer"></div>
+                
+                <button onclick="salvarFeedback()" class="w-full bg-purple-600 text-white font-bold py-3 mt-4 rounded-xl">Enviar Feedback</button>
+                
+                <div class="grid grid-cols-3 gap-2 mt-2">
+                    <button onclick="imprimirAvaliacaoHoje()" class="bg-white text-slate-900 py-3 rounded-xl font-bold text-[10px]">Hoje</button>
+                    <button onclick="imprimirAvaliacao15Dias()" class="bg-white text-slate-900 py-3 rounded-xl font-bold text-[10px]">15 Dias</button>
+                    <button onclick="imprimirAvaliacao30Dias()" class="bg-white text-slate-900 py-3 rounded-xl font-bold text-[10px]">30 Dias</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="aba-mural" class="aba-conteudo hidden flex flex-col h-[380px]">
+          <h3 class="font-bold text-sm text-slate-700 mb-2">💬 EcoMural Coletivo</h3>
+          <div id="listaMensagens" class="flex-1 overflow-y-auto bg-slate-50 rounded-xl p-3 mb-2 border border-slate-200"></div>
+          <div class="flex gap-2">
+            <input id="novaMensagem" type="text" placeholder="Escreva aqui..." class="flex-1 p-3 border rounded-xl text-sm" />
+            <button type="button" onclick="enviarMensagem()" class="bg-green-600 text-white px-4 rounded-xl"><i class="fa-solid fa-paper-plane"></i></button>
+          </div>
         </div>
 
       </div>
     </div>
   </div>
 </div>
-
-<script>
-// FUNÇÕES DE AUTENTICAÇÃO
-async function signInUser() {
-  const email = document.getElementById("email").value.trim();
-  const senha = document.getElementById("senha").value;
-  if(!email || !senha) { alert("Preencha e-mail e senha!"); return; }
-  try {
-    await signInWithEmailAndPassword(auth, email, senha);
-  } catch(e) {
-    alert("Erro ao entrar: " + e.message);
-  }
-}
-
-async function criarNovaConta() {
-  const nome = document.getElementById("nomeCompleto").value.trim();
-  const whatsapp = document.getElementById("whatsapp").value.trim();
-  const email = document.getElementById("email").value.trim();
-  const senha = document.getElementById("senha").value;
-
-  if(!nome || !whatsapp || !email || !senha) {
-    alert("Preencha todos os campos para se cadastrar!");
-    return;
-  }
-  if(senha.length < 6) {
-    alert("A senha deve ter pelo menos 6 caracteres.");
-    return;
-  }
-
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, email, senha);
-    await setDoc(doc(db, "usuarios", cred.user.uid), {
-      nome: nome,
-      whatsapp: whatsapp,
-      email: email,
-      dataCadastro: serverTimestamp(),
-      nivel: "Iniciante Verde",
-      xp: 0
-    });
-    alert("Conta criada com sucesso! 🎉");
-  } catch(e) {
-    alert("Erro ao criar conta: " + e.message);
-  }
-}
-</script>
 
 </body>
 </html>
